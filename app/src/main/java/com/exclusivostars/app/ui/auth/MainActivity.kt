@@ -1,4 +1,4 @@
-package com.exclusivostars.app
+package com.exclusivostars.app.ui.auth
 
 import android.app.Activity
 import android.content.Intent
@@ -15,6 +15,9 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
+import com.exclusivostars.app.R
+import com.exclusivostars.app.network.AuthApi
+import com.exclusivostars.app.ui.home.HomeActivity
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
