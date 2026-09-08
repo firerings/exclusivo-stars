@@ -6,28 +6,31 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
-import java.io.OutputStreamWriter
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
+
+/** Qué formulario está activo en la pantalla de tabs. */
+private enum class Tab { LOGIN, REGISTER }
 
 class MainActivity : Activity() {
 
     private val main = Handler(Looper.getMainLooper())
+    private var activeTab = Tab.LOGIN
 
     companion object {
         // Una sola CookieManager para toda la app: guarda la cookie de
-        // sesión que devuelve Flask (login/CSRF) y la reusa en el
-        // resto de pantallas mientras dure la sesión.
+        // sesión que devuelve Flask y la reusa en el resto de pantallas
+        // mientras dure la sesión.
         val cookieManager: CookieManager by lazy {
             CookieManager(null, CookiePolicy.ACCEPT_ALL).also {
                 CookieHandler.setDefault(it)
@@ -35,101 +38,186 @@ class MainActivity : Activity() {
         }
     }
 
+    private lateinit var tabLogin: TextView
+    private lateinit var tabRegister: TextView
+    private lateinit var indicator: View
+    private lateinit var loginGroup: ViewGroup
+    private lateinit var registerGroup: ViewGroup
+    private lateinit var errorBox: TextView
+    private lateinit var progress: ProgressBar
+    private lateinit var submitButton: Button
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         cookieManager // fuerza la inicialización (y el setDefault) apenas arranca la pantalla
 
-        val email = findViewById<EditText>(R.id.username)
-        val password = findViewById<EditText>(R.id.password)
-        val remember = findViewById<CheckBox>(R.id.remember)
-        val errorBox = findViewById<TextView>(R.id.error_box)
-        val progress = findViewById<ProgressBar>(R.id.progress)
-        val loginButton = findViewById<Button>(R.id.login_button)
+        val logo = findViewById<ImageView>(R.id.logo_star)
+        val brand = findViewById<TextView>(R.id.brand_name)
+        tabLogin = findViewById(R.id.tab_login)
+        tabRegister = findViewById(R.id.tab_register)
+        indicator = findViewById(R.id.tab_indicator)
+        loginGroup = findViewById(R.id.login_group)
+        registerGroup = findViewById(R.id.register_group)
+        errorBox = findViewById(R.id.error_box)
+        progress = findViewById(R.id.progress)
+        submitButton = findViewById(R.id.submit_button)
 
-        loginButton.setOnClickListener {
-            val emailValue = email.text.toString().trim()
-            val passwordValue = password.text.toString()
+        tabLogin.setOnClickListener { switchTab(Tab.LOGIN) }
+        tabRegister.setOnClickListener { switchTab(Tab.REGISTER) }
+        submitButton.setOnClickListener { onSubmit() }
 
-            if (emailValue.isEmpty() || passwordValue.isEmpty()) {
-                showError(errorBox, "Completa correo y contraseña.")
-                return@setOnClickListener
-            }
+        // Entrada del logo: fade + escala, como una versión corta del splash de la web.
+        logo.alpha = 0f
+        logo.scaleX = 0.6f
+        logo.scaleY = 0.6f
+        brand.alpha = 0f
+        logo.animate()
+            .alpha(1f).scaleX(1f).scaleY(1f)
+            .setDuration(420)
+            .setInterpolator(OvershootInterpolator(1.6f))
+            .start()
+        brand.animate().alpha(1f).setStartDelay(150).setDuration(300).start()
 
-            errorBox.visibility = View.GONE
-            progress.visibility = View.VISIBLE
-            loginButton.isEnabled = false
-
-            Thread {
-                val error = doLogin(emailValue, passwordValue, remember.isChecked)
-                main.post {
-                    progress.visibility = View.GONE
-                    loginButton.isEnabled = true
-                    if (error == null) {
-                        startActivity(Intent(this, HomeActivity::class.java))
-                        finish()
-                    } else {
-                        showError(errorBox, error)
-                    }
-                }
-            }.start()
-        }
-
-        findViewById<Button>(R.id.register_button).setOnClickListener {
-            Toast.makeText(this, "Registro próximamente", Toast.LENGTH_SHORT).show()
+        // Los indicadores necesitan que las tabs ya estén medidas.
+        tabLogin.post {
+            indicator.layoutParams.width = tabLogin.width
+            indicator.requestLayout()
+            animateFieldsIn(loginGroup)
         }
     }
 
-    private fun showError(errorBox: TextView, message: String) {
+    private fun switchTab(tab: Tab) {
+        if (tab == activeTab) return
+        activeTab = tab
+
+        val (fromGroup, toGroup, fromTab, toTab, indicatorTarget) = when (tab) {
+            Tab.LOGIN -> ToTabState(registerGroup, loginGroup, tabRegister, tabLogin, tabLogin)
+            Tab.REGISTER -> ToTabState(loginGroup, registerGroup, tabLogin, tabRegister, tabRegister)
+        }
+
+        errorBox.visibility = View.GONE
+
+        // Indicador deslizante entre "Iniciar sesión" / "Crear cuenta".
+        indicator.animate()
+            .x(indicatorTarget.left.toFloat())
+            .setDuration(250)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .start()
+        fromTab.animate().setDuration(200).start()
+        toTab.setTextColor(resources.getColor(R.color.text_primary, theme))
+        fromTab.setTextColor(resources.getColor(R.color.text_secondary, theme))
+
+        // Crossfade entre los dos formularios.
+        fromGroup.animate().alpha(0f).setDuration(150).withEndAction {
+            fromGroup.visibility = View.GONE
+        }.start()
+        toGroup.visibility = View.VISIBLE
+        toGroup.alpha = 0f
+        toGroup.animate().alpha(1f).setDuration(200).setStartDelay(100).start()
+        animateFieldsIn(toGroup)
+
+        submitButton.text = if (tab == Tab.LOGIN) getString(R.string.login) else getString(R.string.register)
+    }
+
+    private data class ToTabState(
+        val fromGroup: ViewGroup,
+        val toGroup: ViewGroup,
+        val fromTab: TextView,
+        val toTab: TextView,
+        val indicatorTarget: View,
+    )
+
+    /** Cascada fade-up de los campos de un grupo, como en el CSS de la web. */
+    private fun animateFieldsIn(group: ViewGroup) {
+        for (i in 0 until group.childCount) {
+            val child = group.getChildAt(i)
+            child.alpha = 0f
+            child.translationY = 24f
+            child.animate()
+                .alpha(1f).translationY(0f)
+                .setStartDelay(i * 60L)
+                .setDuration(260)
+                .setInterpolator(AccelerateDecelerateInterpolator())
+                .start()
+        }
+    }
+
+    private fun showError(message: String) {
         errorBox.text = message
-        errorBox.visibility = View.VISIBLE
+        if (errorBox.visibility != View.VISIBLE) {
+            errorBox.alpha = 0f
+            errorBox.visibility = View.VISIBLE
+            errorBox.animate().alpha(1f).setDuration(200).start()
+        }
     }
 
-    /** Corre en background. Devuelve null si el login fue exitoso, o un mensaje de error. */
-    private fun doLogin(email: String, password: String, remember: Boolean): String? {
-        return try {
-            // 1) GET /login: la cookie de sesión inicial + el csrf_token
-            //    que exige el formulario (mismo que usa el navegador).
-            val getConn = URL(Config.BASE_URL + "/login").openConnection() as HttpURLConnection
-            getConn.connectTimeout = 8000
-            getConn.readTimeout = 8000
-            val html = getConn.inputStream.bufferedReader().readText()
-            getConn.disconnect()
-
-            val csrf = Regex("name=\"csrf_token\" value=\"([^\"]+)\"").find(html)?.groupValues?.get(1)
-                ?: return "El servidor respondió pero no encontré el csrf_token. ¿Es la URL correcta?"
-
-            // 2) POST /login con los mismos campos que el form web.
-            val postConn = URL(Config.BASE_URL + "/login").openConnection() as HttpURLConnection
-            postConn.requestMethod = "POST"
-            postConn.instanceFollowRedirects = false
-            postConn.doOutput = true
-            postConn.connectTimeout = 8000
-            postConn.readTimeout = 8000
-            postConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-
-            val body = buildString {
-                append("csrf_token=").append(URLEncoder.encode(csrf, "UTF-8"))
-                append("&email=").append(URLEncoder.encode(email, "UTF-8"))
-                append("&password=").append(URLEncoder.encode(password, "UTF-8"))
-                if (remember) append("&remember=on")
-            }
-            OutputStreamWriter(postConn.outputStream).use { it.write(body) }
-
-            val code = postConn.responseCode
-            if (code == 302) {
-                // Flask solo redirige a "/" cuando el login fue exitoso.
-                postConn.disconnect()
-                return null
-            }
-
-            val errorHtml = (postConn.errorStream ?: postConn.inputStream).bufferedReader().readText()
-            postConn.disconnect()
-
-            Regex("error-box\">⚠ ([^<]+)<").find(errorHtml)?.groupValues?.get(1)?.trim()
-                ?: "Email o contraseña incorrectos."
-        } catch (e: Exception) {
-            "No se pudo conectar con ${Config.BASE_URL}. ¿Está corriendo el servidor?"
+    private fun onSubmit() {
+        when (activeTab) {
+            Tab.LOGIN -> onLogin()
+            Tab.REGISTER -> onRegister()
         }
+    }
+
+    private fun onLogin() {
+        val email = findViewById<EditText>(R.id.login_email).text.toString().trim()
+        val password = findViewById<EditText>(R.id.login_password).text.toString()
+        val remember = findViewById<CheckBox>(R.id.remember).isChecked
+
+        if (email.isEmpty() || password.isEmpty()) {
+            showError("Completa correo y contraseña.")
+            return
+        }
+
+        setLoading(true)
+        Thread {
+            val result = AuthApi.login(email, password, remember)
+            main.post {
+                setLoading(false)
+                if (result.ok) {
+                    startActivity(Intent(this, HomeActivity::class.java))
+                    finish()
+                } else {
+                    showError(result.error ?: "Email o contraseña incorrectos.")
+                }
+            }
+        }.start()
+    }
+
+    private fun onRegister() {
+        val name = findViewById<EditText>(R.id.register_name).text.toString().trim()
+        val email = findViewById<EditText>(R.id.register_email).text.toString().trim()
+        val password = findViewById<EditText>(R.id.register_password).text.toString()
+        val confirm = findViewById<EditText>(R.id.register_confirm).text.toString()
+
+        // Mismas validaciones que auth/routes.py, reflejadas acá para no
+        // gastar un request en errores obvios (el backend las repite igual).
+        when {
+            name.isEmpty() -> { showError("Falta tu nombre."); return }
+            email.isEmpty() || !email.contains("@") -> { showError("Poné un email válido."); return }
+            password.length < 8 -> { showError("La contraseña necesita al menos 8 caracteres."); return }
+            password != confirm -> { showError("Las contraseñas no coinciden."); return }
+        }
+
+        setLoading(true)
+        Thread {
+            val result = AuthApi.register(name, email, password, confirm)
+            main.post {
+                setLoading(false)
+                if (result.ok) {
+                    startActivity(Intent(this, HomeActivity::class.java))
+                    finish()
+                } else {
+                    showError(result.error ?: "No se pudo crear la cuenta.")
+                }
+            }
+        }.start()
+    }
+
+    private fun setLoading(loading: Boolean) {
+        progress.visibility = if (loading) View.VISIBLE else View.GONE
+        submitButton.isEnabled = !loading
+        tabLogin.isEnabled = !loading
+        tabRegister.isEnabled = !loading
     }
 }

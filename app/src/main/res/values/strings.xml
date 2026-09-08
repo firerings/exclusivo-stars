@@ -6,6 +6,10 @@
     <string name="login_subtitle">Entra a tu cuenta</string>
     <string name="username_hint">Correo electrónico</string>
     <string name="password_hint">Contraseña</string>
+    <string name="name_hint">Nombre</string>
+    <string name="confirm_hint">Confirmar contraseña</string>
+    <string name="register_title">Crear cuenta</string>
+    <string name="register_subtitle">Sumate a Exclusivo Stars</string>
     <string name="remember">Recordarme</string>
     <string name="login">Iniciar sesión</string>
     <string name="register">Crear cuenta</string>
