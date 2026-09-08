@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#0D0D0F</color>
+    <color name="surface">#17171B</color>
+    <color name="star_red">#E3152F</color>
+    <color name="star_red_dark">#A80D21</color>
+    <color name="gold">#D5AD5B</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#9E9EA5</color>
+    <color name="error">#FF6B6B</color>
+</resources>
