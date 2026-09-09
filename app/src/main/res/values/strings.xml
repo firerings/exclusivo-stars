@@ -38,4 +38,5 @@
     <string name="aviso_directo_con_audio">Reproducción directa (sin calidad adaptativa) · Audio: %1$s</string>
     <string name="aviso_directo_sin_audio">Reproducción directa · esta película todavía no se procesó para calidad adaptativa.</string>
     <string name="error_cargar_pelicula">No se pudo cargar la película.</string>
+    <string name="pantalla_completa">Pantalla completa</string>
 </resources>

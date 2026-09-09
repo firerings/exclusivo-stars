@@ -22,6 +22,11 @@ kotlin {
 dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.cardview:cardview:1.0.0")
+    // ConstraintLayout: necesario para el hero de pelicula_detalle
+    // (tarjeta ancha con ratio 16:9 anclada abajo del contenedor,
+    // ver activity_pelicula_detalle.xml) — no se puede lograr ese
+    // ratio responsive con FrameLayout/LinearLayout puro.
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     // Carga async de posters con caché en disco/memoria y manejo de
     // scroll en RecyclerView ya resuelto — reinventar esto a mano con
     // HttpURLConnection sería mucho peor para una grilla con muchas

@@ -3,7 +3,6 @@ package com.exclusivostars.app.ui.player
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -11,8 +10,6 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -26,6 +23,15 @@ import com.exclusivostars.app.model.PeliculaDetalle
  * URL: modoDirecto/sourceUrl/subtitulos ya vienen decididos por el
  * backend (ver _datos_reproduccion_pelicula) — la app no tiene que
  * volver a inferir nada, solo pasárselo a Media3.
+ *
+ * Dos formas de llegar acá: directo desde la ficha (posición 0), o
+ * como "expandir" desde el reproductor inline de
+ * PeliculaDetalleActivity (con posicionInicialMs > 0, para no
+ * reiniciar el video al pasar a fullscreen).
+ *
+ * `crop` (barras negras por lado) se corrige igual que en el
+ * reproductor inline — ver CropCorrector, misma fórmula que
+ * player.js en la web.
  *
  * Media3 elige el tipo de fuente según la URL: master.m3u8 -> HLS (con
  * el módulo media3-exoplayer-hls agregado en build.gradle.kts),
@@ -50,10 +56,19 @@ class PlayerActivity : AppCompatActivity() {
 
     companion object {
         private const val EXTRA_PELICULA = "pelicula"
+        private const val EXTRA_POSICION_INICIAL_MS = "posicion_inicial_ms"
 
-        fun iniciar(context: Context, pelicula: PeliculaDetalle) {
+        /**
+         * [posicionInicialMs]: usado al pasar de reproducción inline (en
+         * la ficha) a pantalla completa, para continuar exactamente
+         * donde se quedó en vez de arrancar de cero — mismo criterio
+         * que el fullscreen de la web, que no reinicia el <video>.
+         */
+        fun iniciar(context: Context, pelicula: PeliculaDetalle, posicionInicialMs: Long = 0L) {
             context.startActivity(
-                Intent(context, PlayerActivity::class.java).putExtra(EXTRA_PELICULA, pelicula)
+                Intent(context, PlayerActivity::class.java)
+                    .putExtra(EXTRA_PELICULA, pelicula)
+                    .putExtra(EXTRA_POSICION_INICIAL_MS, posicionInicialMs)
             )
         }
     }
@@ -118,9 +133,12 @@ class PlayerActivity : AppCompatActivity() {
             val pelicula = intent.getSerializableExtra(EXTRA_PELICULA) as? PeliculaDetalle
                 ?: return mostrarError(getString(R.string.error_cargar_pelicula))
 
+            val posicionInicialMs = intent.getLongExtra(EXTRA_POSICION_INICIAL_MS, 0L)
+
             val exoPlayer = ExoPlayer.Builder(this).build()
             player = exoPlayer
             playerView.player = exoPlayer
+            CropCorrector.instalar(playerView, pelicula.crop)
 
             exoPlayer.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -132,19 +150,8 @@ class PlayerActivity : AppCompatActivity() {
                 }
             })
 
-            val builder = MediaItem.Builder().setUri(Uri.parse(pelicula.sourceUrl))
-            if (pelicula.subtitulos.isNotEmpty()) {
-                val subs = pelicula.subtitulos.map { sub ->
-                    MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.url))
-                        .setMimeType(MimeTypes.TEXT_VTT)
-                        .setLanguage(sub.lang)
-                        .setLabel(sub.label)
-                        .build()
-                }
-                builder.setSubtitleConfigurations(subs)
-            }
-
-            exoPlayer.setMediaItem(builder.build())
+            exoPlayer.setMediaItem(MediaItemFactory.build(pelicula))
+            if (posicionInicialMs > 0L) exoPlayer.seekTo(posicionInicialMs)
             exoPlayer.playWhenReady = true
             exoPlayer.prepare()
         } catch (e: Exception) {

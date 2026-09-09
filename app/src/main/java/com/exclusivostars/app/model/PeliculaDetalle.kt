@@ -22,6 +22,39 @@ data class Actor(
     }
 }
 
+/**
+ * Barras negras horneadas en el propio frame decodificado, por lado,
+ * como fracción del frame (0-1) — mismo campo que ya calcula
+ * `_datos_reproduccion_pelicula` en el server (`detectar_crop.py`) y
+ * que `player.js` usa en la web (`config.crop`). Independiente por
+ * lado (no es letterbox simétrico): puede haber barra solo abajo y a
+ * la izquierda, por ejemplo. Todos opcionales/0.0 si el backend no
+ * los manda — sin campo "crop" en el JSON, no se aplica corrección
+ * (mismo comportamiento que hoy).
+ */
+data class CropBarras(
+    val top: Float,
+    val bottom: Float,
+    val left: Float,
+    val right: Float,
+) : java.io.Serializable {
+    /** true si hay algo que corregir — evita tocar la Matrix en el caso común (sin barras). */
+    fun esNulo(): Boolean = top == 0f && bottom == 0f && left == 0f && right == 0f
+
+    companion object {
+        fun fromJson(json: JSONObject?): CropBarras? {
+            if (json == null) return null
+            val crop = CropBarras(
+                top = json.optDouble("top", 0.0).toFloat(),
+                bottom = json.optDouble("bottom", 0.0).toFloat(),
+                left = json.optDouble("left", 0.0).toFloat(),
+                right = json.optDouble("right", 0.0).toFloat(),
+            )
+            return if (crop.esNulo()) null else crop
+        }
+    }
+}
+
 /** Un subtítulo .vtt disponible para la película. */
 data class Subtitulo(
     val lang: String?,
@@ -65,6 +98,7 @@ data class PeliculaDetalle(
     val modoDirecto: Boolean,
     val sourceUrl: String,
     val subtitulos: List<Subtitulo>,
+    val crop: CropBarras?,
 ) : java.io.Serializable {
     companion object {
         fun fromJson(json: JSONObject): PeliculaDetalle {
@@ -98,6 +132,7 @@ data class PeliculaDetalle(
                 modoDirecto = json.optBoolean("modo_directo", false),
                 sourceUrl = json.getString("source_url"),
                 subtitulos = subtitulos,
+                crop = CropBarras.fromJson(json.optJSONObject("crop")),
             )
         }
     }

@@ -10,15 +10,22 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.NestedScrollView
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.exclusivostars.app.R
 import com.exclusivostars.app.model.PeliculaDetalle
 import com.exclusivostars.app.network.PeliculaApi
+import com.exclusivostars.app.ui.player.CropCorrector
+import com.exclusivostars.app.ui.player.MediaItemFactory
 import com.exclusivostars.app.ui.player.PlayerActivity
 import kotlin.math.roundToInt
 
@@ -41,6 +48,11 @@ class PeliculaDetalleActivity : AppCompatActivity() {
     private lateinit var heroFondo: ImageView
     private lateinit var heroTarjeta: FrameLayout
     private lateinit var heroTarjetaImg: ImageView
+    private lateinit var heroPlayIcon: ImageView
+    private lateinit var playerViewInline: PlayerView
+    private lateinit var heroInlineProgress: ProgressBar
+    private lateinit var heroFullscreenButton: ImageButton
+    private var inlinePlayer: ExoPlayer? = null
     private lateinit var titulo: TextView
     private lateinit var meta: TextView
     private lateinit var director: TextView
@@ -51,6 +63,7 @@ class PeliculaDetalleActivity : AppCompatActivity() {
     private lateinit var recyclerReparto: RecyclerView
 
     private lateinit var nombre: String
+    private var peliculaActual: PeliculaDetalle? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,6 +80,10 @@ class PeliculaDetalleActivity : AppCompatActivity() {
         heroFondo = findViewById(R.id.hero_fondo)
         heroTarjeta = findViewById(R.id.hero_tarjeta)
         heroTarjetaImg = findViewById(R.id.hero_tarjeta_img)
+        heroPlayIcon = findViewById(R.id.hero_play_icon)
+        playerViewInline = findViewById(R.id.player_view_inline)
+        heroInlineProgress = findViewById(R.id.hero_inline_progress)
+        heroFullscreenButton = findViewById(R.id.hero_fullscreen_button)
         titulo = findViewById(R.id.titulo)
         meta = findViewById(R.id.meta)
         director = findViewById(R.id.director)
@@ -122,7 +139,9 @@ class PeliculaDetalleActivity : AppCompatActivity() {
             .error(R.drawable.poster_placeholder_background)
             .centerCrop()
             .into(heroTarjetaImg)
-        heroTarjeta.setOnClickListener { PlayerActivity.iniciar(this, pelicula) }
+        peliculaActual = pelicula
+        heroTarjeta.setOnClickListener { iniciarInline(pelicula) }
+        heroFullscreenButton.setOnClickListener { expandirAFullscreen() }
 
         titulo.text = pelicula.titulo
 
@@ -170,5 +189,78 @@ class PeliculaDetalleActivity : AppCompatActivity() {
             repartoTitulo.visibility = View.GONE
             recyclerReparto.visibility = View.GONE
         }
+    }
+
+    /**
+     * Reproducción inline: reemplaza la miniatura+play por el
+     * reproductor, EN EL MISMO contenedor (hero_tarjeta) — mismo
+     * criterio que el reproductor embebido de la web (_player.html),
+     * en vez de navegar a PlayerActivity de entrada. La pantalla
+     * completa queda como acción explícita (hero_fullscreen_button).
+     */
+    private fun iniciarInline(pelicula: PeliculaDetalle) {
+        if (inlinePlayer != null) return // ya está reproduciendo/inicializado
+
+        heroPlayIcon.visibility = View.GONE
+        playerViewInline.visibility = View.VISIBLE
+        heroFullscreenButton.visibility = View.VISIBLE
+        heroInlineProgress.visibility = View.VISIBLE
+
+        val exoPlayer = ExoPlayer.Builder(this).build()
+        inlinePlayer = exoPlayer
+        playerViewInline.player = exoPlayer
+        CropCorrector.instalar(playerViewInline, pelicula.crop)
+
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                heroInlineProgress.visibility =
+                    if (playbackState == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                // Fallback: si el inline falla (ej. formato no soportado
+                // por el resize del contenedor chico), vuelve a la
+                // miniatura+play en vez de dejar la tarjeta rota —
+                // el usuario puede reintentar o abrir en pantalla
+                // completa directamente si prefiere.
+                liberarInline()
+            }
+        })
+
+        exoPlayer.setMediaItem(MediaItemFactory.build(pelicula))
+        exoPlayer.playWhenReady = true
+        exoPlayer.prepare()
+    }
+
+    /**
+     * "Expandir": pasa lo que se está viendo inline a PlayerActivity
+     * (pantalla completa horizontal) sin reiniciar el video — mismo
+     * criterio que el botón de fullscreen del reproductor web, que no
+     * reinicia el <video> al pedir el fullscreen del navegador.
+     */
+    private fun expandirAFullscreen() {
+        val pelicula = peliculaActual ?: return
+        val posicionMs = inlinePlayer?.currentPosition ?: 0L
+        liberarInline()
+        PlayerActivity.iniciar(this, pelicula, posicionMs)
+    }
+
+    private fun liberarInline() {
+        inlinePlayer?.release()
+        inlinePlayer = null
+        playerViewInline.player = null
+        playerViewInline.visibility = View.GONE
+        heroInlineProgress.visibility = View.GONE
+        heroFullscreenButton.visibility = View.GONE
+        heroPlayIcon.visibility = View.VISIBLE
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Red de seguridad: si el usuario sale de la pantalla (Home,
+        // back, o al abrir PlayerActivity) sin pasar por
+        // expandirAFullscreen(), igual hay que soltar el ExoPlayer acá
+        // — si no, sigue reproduciendo audio de fondo sin UI visible.
+        liberarInline()
     }
 }

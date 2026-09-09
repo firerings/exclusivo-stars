@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
+    <!-- surface_type texture_view: único tipo de superficie de Media3
+         que soporta Matrix (necesario para CropCorrector). Antes usaba
+         SurfaceView (default), que no admite transformaciones. -->
     <androidx.media3.ui.PlayerView
         android:id="@+id/player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:keepScreenOn="true" />
+        android:keepScreenOn="true"
+        app:surface_type="texture_view" />
 
     <ProgressBar
         android:id="@+id/progress"

@@ -17,49 +17,110 @@
             android:orientation="vertical"
             android:paddingBottom="32dp">
 
-            <!-- Hero: fondo atmosférico difuminado + tarjeta nítida
-                 clickeable con el play encima. Mismo orden de prioridad
-                 fondo > tarjeta > poster que pelicula.html. -->
-            <FrameLayout
+            <!-- Hero: fondo atmosférico difuminado + tarjeta nítida,
+                 ahora anclada ABAJO del hero (el nombre queda justo
+                 debajo, fuera de este bloque) y casi a todo el ancho
+                 —apenas márgenes mínimos a los lados—, igual criterio
+                 que .pelicula-hero-thumb en la web (align-items:
+                 flex-end + width: min(920px,74vw)). Reemplaza
+                 FrameLayout por ConstraintLayout porque hace falta el
+                 ratio 16:9 responsive (app:layout_constraintDimensionRatio),
+                 imposible de lograr con FrameLayout/LinearLayout puro.
+                 Mismo orden de prioridad fondo > tarjeta > poster que
+                 pelicula.html. -->
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="260dp">
+                android:layout_height="330dp">
 
                 <ImageView
                     android:id="@+id/hero_fondo"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
                     android:scaleType="centerCrop"
-                    android:contentDescription="@null" />
+                    android:contentDescription="@null"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
 
                 <!-- Degradado hacia el fondo de la pantalla, igual criterio
                      que .pelicula-hero-degradado (web). -->
                 <View
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/hero_degradado" />
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:background="@drawable/hero_degradado"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
 
+                <!-- Tarjeta: arranca mostrando miniatura+play; al
+                     tocar, el reproductor inline (player_view_inline)
+                     la reemplaza EN EL MISMO lugar/tamaño — igual
+                     criterio que _player.html embebido en la web (el
+                     player ocupa el contenedor de la tarjeta, no
+                     navega a otra pantalla). -->
                 <FrameLayout
                     android:id="@+id/hero_tarjeta"
-                    android:layout_width="220dp"
-                    android:layout_height="124dp"
-                    android:layout_gravity="center">
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    app:layout_constraintDimensionRatio="H,16:9"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="20dp"
+                    android:background="@drawable/poster_placeholder_background"
+                    android:clipToOutline="false">
 
                     <ImageView
                         android:id="@+id/hero_tarjeta_img"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:scaleType="centerCrop"
-                        android:background="@drawable/poster_placeholder_background"
                         android:contentDescription="@null" />
 
+                    <!-- Reproductor inline. surface_type texture_view
+                         para que CropCorrector pueda aplicar la Matrix
+                         de recorte, igual que en PlayerActivity. -->
+                    <androidx.media3.ui.PlayerView
+                        android:id="@+id/player_view_inline"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone"
+                        app:surface_type="texture_view" />
+
                     <ImageView
-                        android:layout_width="52dp"
-                        android:layout_height="52dp"
+                        android:id="@+id/hero_play_icon"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
                         android:layout_gravity="center"
                         android:src="@drawable/ic_play_circle"
                         android:contentDescription="@string/reproducir" />
+
+                    <ProgressBar
+                        android:id="@+id/hero_inline_progress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:visibility="gone" />
+
+                    <!-- Expandir a pantalla completa: solo visible
+                         mientras el inline está reproduciendo. -->
+                    <ImageButton
+                        android:id="@+id/hero_fullscreen_button"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
+                        android:layout_gravity="top|end"
+                        android:layout_margin="8dp"
+                        android:background="@drawable/back_button_background"
+                        android:src="@android:drawable/ic_menu_crop"
+                        app:tint="@android:color/white"
+                        android:contentDescription="@string/pantalla_completa"
+                        android:visibility="gone" />
                 </FrameLayout>
-            </FrameLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
