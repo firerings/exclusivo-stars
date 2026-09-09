@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.exclusivostars.app.R
 import com.exclusivostars.app.model.PeliculaDetalle
@@ -138,6 +139,13 @@ class PlayerActivity : AppCompatActivity() {
             val exoPlayer = ExoPlayer.Builder(this).build()
             player = exoPlayer
             playerView.player = exoPlayer
+            // ZOOM en vez del FIT por default: FIT deja barras/huecos
+            // cuando el AR crudo del video no coincide exacto con el
+            // del contenedor (esto es aparte del crop de barras
+            // horneadas -- pasa incluso sin ninguna barra en el
+            // archivo). ZOOM siempre llena el contenedor recortando
+            // el sobrante, igual criterio que object-fit:cover.
+            playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             CropCorrector.instalar(playerView, pelicula.crop)
 
             exoPlayer.addListener(object : Player.Listener {

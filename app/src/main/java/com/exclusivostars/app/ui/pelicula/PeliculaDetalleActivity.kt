@@ -12,11 +12,13 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.NestedScrollView
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -209,7 +211,23 @@ class PeliculaDetalleActivity : AppCompatActivity() {
         val exoPlayer = ExoPlayer.Builder(this).build()
         inlinePlayer = exoPlayer
         playerViewInline.player = exoPlayer
+        // Mismo motivo que en PlayerActivity: ZOOM llena siempre el
+        // contenedor (evita huecos por AR crudo distinto al de la
+        // caja), independiente del crop de barras horneadas.
+        playerViewInline.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
         CropCorrector.instalar(playerViewInline, pelicula.crop)
+
+        // TODO diagnostico temporal -- sacar una vez confirmado si el
+        // crop llega o no desde el backend para las peliculas de
+        // prueba (sospecha: a estos archivos nunca les corrio
+        // _marcar_pistas/deteccion de crop del lado server, asi que
+        // "crop" llega null y no hay nada que corregir del lado
+        // Android).
+        Toast.makeText(
+            this,
+            "crop: ${pelicula.crop ?: "null (el backend no lo calculo para esta pelicula)"}",
+            Toast.LENGTH_LONG
+        ).show()
 
         exoPlayer.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
