@@ -19,6 +19,10 @@ import java.net.CookiePolicy
  * a pasar por MainActivity — dejando CookieHandler.getDefault() en
  * null y todas las rutas de la API responderían 401 "no autenticado"
  * aunque el login siga siendo válido en el servidor.
+ *
+ * La cookie además se guarda en disco (PersistentCookieStore), no
+ * solo en memoria — así la sesión sobrevive a cerrar la app del todo,
+ * no solo a que Android recicle el proceso en segundo plano.
  */
 class MediaflixApp : Application() {
 
@@ -29,7 +33,7 @@ class MediaflixApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        cookieManager = CookieManager(null, CookiePolicy.ACCEPT_ALL)
+        cookieManager = CookieManager(PersistentCookieStore(this), CookiePolicy.ACCEPT_ALL)
         CookieHandler.setDefault(cookieManager)
     }
 }
