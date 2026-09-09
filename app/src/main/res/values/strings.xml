@@ -14,7 +14,9 @@
     <string name="login">Iniciar sesión</string>
     <string name="register">Crear cuenta</string>
     <string name="privacy">Al continuar aceptas nuestros términos de servicio y política de privacidad.</string>
-    <string name="home_title">Sesión iniciada</string>
-    <string name="home_subtitle">Conectado a Exclusivo Stars. Listo para recibir datos del backend.</string>
+    <string name="peliculas_title">Películas</string>
+    <string name="pelicula_pendiente_badge">Pendiente</string>
+    <string name="peliculas_vacio">Todavía no hay películas indexadas.</string>
+    <string name="retry">Reintentar</string>
     <string name="logout">Cerrar sesión</string>
 </resources>

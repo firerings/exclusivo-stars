@@ -25,8 +25,18 @@ El APK debug queda como artifact descargable de la ejecución
 
 ## Backend pendiente
 
-`AuthApi.kt` documenta el contrato JSON esperado (`/api/login`,
-`/api/register`) — ambas rutas nuevas en `auth/routes.py`,
-`@csrf.exempt` igual que `reindexar`, devolviendo `{"ok": bool,
-"error": str|null, "user": {...}}` y dejando la sesión iniciada igual
-que hoy (`session["user_id"] = user.id`).
+`AuthApi.kt` y `PeliculasApi.kt` documentan los contratos JSON
+esperados:
+
+- `/api/login`, `/api/register` — rutas nuevas en `auth/routes.py`,
+  `@csrf.exempt` igual que `reindexar`, devolviendo `{"ok": bool,
+  "error": str|null, "user": {...}}` y dejando la sesión iniciada
+  igual que hoy (`session["user_id"] = user.id`).
+- `/api/peliculas` — ruta nueva en `blueprints/peliculas.py`, GET (no
+  necesita `@csrf.exempt`, CSRFProtect no protege GET), devolviendo
+  `{"ok": true, "peliculas": [...]}` con los mismos nombres de campo
+  que ya arma `indexador.py` (`nombre`, `titulo`, `sinopsis`, `anio`,
+  `duracion`, `estado`) más `poster_url` resuelto a URL absoluta. Falta
+  decidir qué devuelve esta ruta si no hay sesión — hoy
+  `cargar_usuario_y_exigir_login` redirige a `/login` (HTML), lo que
+  rompería el parseo JSON de la app.

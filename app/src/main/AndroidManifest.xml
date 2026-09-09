@@ -24,7 +24,7 @@
             android:name=".ui.auth.MainActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.home.HomeActivity"
+            android:name=".ui.peliculas.PeliculasActivity"
             android:exported="false" />
     </application>
 </manifest>

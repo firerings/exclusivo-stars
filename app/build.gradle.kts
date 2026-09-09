@@ -19,3 +19,12 @@ android {
 kotlin {
     jvmToolchain(17)
 }
+dependencies {
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.cardview:cardview:1.0.0")
+    // Carga async de posters con caché en disco/memoria y manejo de
+    // scroll en RecyclerView ya resuelto — reinventar esto a mano con
+    // HttpURLConnection sería mucho peor para una grilla con muchas
+    // imágenes cargando/reciclándose en simultáneo.
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+}

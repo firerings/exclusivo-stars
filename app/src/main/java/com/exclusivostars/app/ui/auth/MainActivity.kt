@@ -17,7 +17,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import com.exclusivostars.app.R
 import com.exclusivostars.app.network.AuthApi
-import com.exclusivostars.app.ui.home.HomeActivity
+import com.exclusivostars.app.ui.peliculas.PeliculasActivity
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
@@ -178,7 +178,7 @@ class MainActivity : Activity() {
             main.post {
                 setLoading(false)
                 if (result.ok) {
-                    startActivity(Intent(this, HomeActivity::class.java))
+                    startActivity(Intent(this, PeliculasActivity::class.java))
                     finish()
                 } else {
                     showError(result.error ?: "Email o contraseña incorrectos.")
@@ -208,7 +208,7 @@ class MainActivity : Activity() {
             main.post {
                 setLoading(false)
                 if (result.ok) {
-                    startActivity(Intent(this, HomeActivity::class.java))
+                    startActivity(Intent(this, PeliculasActivity::class.java))
                     finish()
                 } else {
                     showError(result.error ?: "No se pudo crear la cuenta.")
