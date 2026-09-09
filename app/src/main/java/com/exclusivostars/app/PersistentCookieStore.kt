@@ -46,7 +46,7 @@ class PersistentCookieStore(context: Context) : CookieStore {
 
     override fun getCookies(): MutableList<HttpCookie> = delegate.cookies
 
-    override fun getURIs(): MutableList<URI> = delegate.uRIs
+    override fun getURIs(): MutableList<URI> = delegate.getURIs()
 
     override fun remove(uri: URI?, cookie: HttpCookie?): Boolean {
         val huboRemocion = delegate.remove(uri, cookie)
