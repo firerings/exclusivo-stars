@@ -56,8 +56,14 @@ class PlayerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        ocultarBarrasSistema()
         setContentView(R.layout.activity_player)
+        // window.insetsController (dentro de ocultarBarrasSistema) exige
+        // que la ventana ya tenga su DecorView armada -- eso recién pasa
+        // después de setContentView(), nunca antes. Llamarla antes tira
+        // NullPointerException en PhoneWindow.getInsetsController() y
+        // crashea la Activity en cada intento de reproducir, sin ningún
+        // request llegar al backend (por eso el server no mostraba nada).
+        ocultarBarrasSistema()
 
         playerView = findViewById(R.id.player_view)
         progress = findViewById(R.id.progress)
