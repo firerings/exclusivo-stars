@@ -97,50 +97,57 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun inicializarPlayer() {
-        @Suppress("DEPRECATION")
-        val pelicula = intent.getSerializableExtra(EXTRA_PELICULA) as? PeliculaDetalle
-            ?: return mostrarError(getString(R.string.error_cargar_pelicula))
+        try {
+            @Suppress("DEPRECATION")
+            val pelicula = intent.getSerializableExtra(EXTRA_PELICULA) as? PeliculaDetalle
+                ?: return mostrarError(getString(R.string.error_cargar_pelicula))
 
-        // Media3 no manda sola la cookie de sesión (a diferencia de
-        // Glide/ApiClient, que corren sobre HttpURLConnection puro y sí
-        // la sacan del CookieHandler.setDefault() de MainActivity):
-        // hay que pasársela a mano acá, o el backend responde "no
-        // autenticado" en video/subtítulos aunque la ficha haya
-        // cargado bien.
-        val dataSourceFactory = DefaultHttpDataSource.Factory()
-            .setDefaultRequestProperties(cookieHeadersPara(pelicula.sourceUrl))
+            // Media3 no manda sola la cookie de sesión (a diferencia de
+            // Glide/ApiClient, que corren sobre HttpURLConnection puro y sí
+            // la sacan del CookieHandler.setDefault() de MainActivity):
+            // hay que pasársela a mano acá, o el backend responde "no
+            // autenticado" en video/subtítulos aunque la ficha haya
+            // cargado bien.
+            val dataSourceFactory = DefaultHttpDataSource.Factory()
+                .setDefaultRequestProperties(cookieHeadersPara(pelicula.sourceUrl))
 
-        val exoPlayer = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
-            .build()
-        player = exoPlayer
-        playerView.player = exoPlayer
+            val exoPlayer = ExoPlayer.Builder(this)
+                .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+                .build()
+            player = exoPlayer
+            playerView.player = exoPlayer
 
-        exoPlayer.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                progress.visibility = if (playbackState == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
+            exoPlayer.addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    progress.visibility = if (playbackState == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    mostrarError("ExoPlayer: ${error.errorCodeName} — ${error.localizedMessage}")
+                }
+            })
+
+            val builder = MediaItem.Builder().setUri(Uri.parse(pelicula.sourceUrl))
+            if (pelicula.subtitulos.isNotEmpty()) {
+                val subs = pelicula.subtitulos.map { sub ->
+                    MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.url))
+                        .setMimeType(MimeTypes.TEXT_VTT)
+                        .setLanguage(sub.lang)
+                        .setLabel(sub.label)
+                        .build()
+                }
+                builder.setSubtitleConfigurations(subs)
             }
 
-            override fun onPlayerError(error: PlaybackException) {
-                mostrarError(error.localizedMessage ?: getString(R.string.error_cargar_pelicula))
-            }
-        })
-
-        val builder = MediaItem.Builder().setUri(Uri.parse(pelicula.sourceUrl))
-        if (pelicula.subtitulos.isNotEmpty()) {
-            val subs = pelicula.subtitulos.map { sub ->
-                MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.url))
-                    .setMimeType(MimeTypes.TEXT_VTT)
-                    .setLanguage(sub.lang)
-                    .setLabel(sub.label)
-                    .build()
-            }
-            builder.setSubtitleConfigurations(subs)
+            exoPlayer.setMediaItem(builder.build())
+            exoPlayer.playWhenReady = true
+            exoPlayer.prepare()
+        } catch (e: Exception) {
+            // Antes esto tiraba la Activity entera sin avisar nada (por
+            // eso "volvía a películas" sin mensaje). Mostrarlo acá saca a
+            // ciegas el diagnóstico real la próxima vez que se reproduzca.
+            mostrarError("CRASH: ${e::class.simpleName} — ${e.message}")
         }
-
-        exoPlayer.setMediaItem(builder.build())
-        exoPlayer.playWhenReady = true
-        exoPlayer.prepare()
     }
 
     /** Cookie de sesión ya guardada por el CookieManager global (ver
