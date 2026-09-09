@@ -15,14 +15,10 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.exclusivostars.app.R
 import com.exclusivostars.app.model.PeliculaDetalle
-import java.net.CookieHandler
-import java.net.CookieManager
 
 /**
  * Reproductor standalone (pantalla completa, orientación horizontal
@@ -35,6 +31,20 @@ import java.net.CookieManager
  * el módulo media3-exoplayer-hls agregado en build.gradle.kts),
  * cualquier otra extensión de video -> extractor progresivo estándar.
  * No hace falta que la app distinga los dos casos a mano.
+ *
+ * Cookie de sesión: NO se pasa a mano. El CookieHandler global (seteado
+ * en MediaflixApp.onCreate) ya la agrega solo a cualquier
+ * HttpURLConnection del proceso — así es como cargan bien fondo.jpg/
+ * tarjeta.jpg vía Glide, sin código especial. Media3 usa ese mismo
+ * HttpURLConnection por debajo, así que también le llega solo.
+ * Habíamos agregado un cookieHeadersPara() manual pensando que ese
+ * mecanismo automático estaba roto para esta URL — no lo estaba: el
+ * agregado manual quedaba SUMADO al automático, mandando la cookie
+ * duplicada y separada por coma en vez de "; " (confirmado con un log
+ * temporal del lado server: "session=X,session=X" en el header Cookie
+ * crudo), lo cual rompía el parseo de Werkzeug y volvía "no
+ * autenticado" — de ahí el 302 a /login. Sacar el código manual (no
+ * agregar más) fue la solución.
  */
 class PlayerActivity : AppCompatActivity() {
 
@@ -108,52 +118,7 @@ class PlayerActivity : AppCompatActivity() {
             val pelicula = intent.getSerializableExtra(EXTRA_PELICULA) as? PeliculaDetalle
                 ?: return mostrarError(getString(R.string.error_cargar_pelicula))
 
-            // Media3 no manda sola la cookie de sesión (a diferencia de
-            // Glide/ApiClient, que corren sobre HttpURLConnection puro y sí
-            // la sacan del CookieHandler.setDefault() de MainActivity):
-            // hay que pasársela a mano acá, o el backend responde "no
-            // autenticado" en video/subtítulos aunque la ficha haya
-            // cargado bien.
-            val headersCookie = cookieHeadersPara(pelicula.sourceUrl)
-            // DEBUG TEMPORAL: se guarda para meterla en el mensaje de
-            // error de más abajo (el Toast duraba <1s y no daba tiempo
-            // a leerlo). Sacar esto (cookieDebugTexto y su uso en
-            // onPlayerError) una vez resuelto el 302.
-            val cookieDebugTexto = "DEBUG Cookie: ${headersCookie["Cookie"] ?: "(NINGUNA — mapa vacío)"}"
-
-            // DEBUG TEMPORAL #2: hacer el mismo tipo de request que hace
-            // Media3 por debajo (java.net.HttpURLConnection, mismo
-            // proceso, mismo CookieHandler global activo) pero fuera de
-            // ExoPlayer, para ver si el 302 pasa igual con curl (donde
-            // no hay CookieHandler global de por medio) o si es propio
-            // de correr dentro de la app. Corre en background porque
-            // network en el hilo principal tira NetworkOnMainThreadException.
-            // Sacar este bloque entero (y el import de Thread/HttpURLConnection)
-            // una vez resuelto el 302.
-            Thread {
-                try {
-                    val conn = (java.net.URL(pelicula.sourceUrl).openConnection() as java.net.HttpURLConnection)
-                    conn.setRequestProperty("Cookie", headersCookie["Cookie"] ?: "")
-                    conn.instanceFollowRedirects = false
-                    val codigo = conn.responseCode
-                    val cookieHeaderReal = conn.getRequestProperty("Cookie")
-                    conn.disconnect()
-                    runOnUiThread {
-                        agregarTextoDebug("HttpURLConnection directo: código=$codigo, Cookie que quedó al conectar=$cookieHeaderReal")
-                    }
-                } catch (e: Exception) {
-                    runOnUiThread {
-                        agregarTextoDebug("HttpURLConnection directo falló: ${e::class.simpleName} — ${e.message}")
-                    }
-                }
-            }.start()
-
-            val dataSourceFactory = DefaultHttpDataSource.Factory()
-                .setDefaultRequestProperties(headersCookie)
-
-            val exoPlayer = ExoPlayer.Builder(this)
-                .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
-                .build()
+            val exoPlayer = ExoPlayer.Builder(this).build()
             player = exoPlayer
             playerView.player = exoPlayer
 
@@ -163,7 +128,7 @@ class PlayerActivity : AppCompatActivity() {
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    mostrarError("ExoPlayer: ${error.errorCodeName} — ${error.localizedMessage}\n\n$cookieDebugTexto")
+                    mostrarError("ExoPlayer: ${error.errorCodeName} — ${error.localizedMessage}")
                 }
             })
 
@@ -190,51 +155,9 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
-    /** Cookie de sesión ya guardada por el CookieManager global (ver
-     * MainActivity), formateada como request header para
-     * DefaultHttpDataSource.Factory.setDefaultRequestProperties(). Mismo
-     * mecanismo que HttpURLConnection resuelve solo para Glide/ApiClient;
-     * Media3 no lo hace, así que hay que armarlo a mano.
-     *
-     * No usa CookieHandler.get(uri, ...) (el matching por dominio/path
-     * de CookieManager) porque ese matching fallaba contra la URL real
-     * del video (302 a /login pese a haber sesión — confirmado en logs
-     * del server) y no valía la pena perseguir la causa exacta. La app
-     * solo habla con un server (Config.BASE_URL), así que no hay
-     * ambigüedad de dominio posible: se vuelca el cookieStore entero
-     * sin pedirle nada a CookieManager.
-     *
-     * El parámetro url queda sin usar a propósito (mismo mecanismo para
-     * cualquier URL de este server, video o subtítulos). */
-    @Suppress("UNUSED_PARAMETER")
-    private fun cookieHeadersPara(url: String): Map<String, String> {
-        val cookieManager = CookieHandler.getDefault() as? CookieManager ?: return emptyMap()
-        val cookies = cookieManager.cookieStore.cookies
-        if (cookies.isEmpty()) return emptyMap()
-        // Si por algún motivo quedaron dos cookies con el mismo nombre
-        // (ej. una vieja sin purgar conviviendo con la nueva tras un
-        // re-login), no concatenar las dos: "session=A; session=B" en
-        // el header puede hacer que el server lea la que no corresponde.
-        // Nos quedamos con la última de cada nombre.
-        val porNombre = LinkedHashMap<String, String>()
-        cookies.forEach { porNombre[it.name] = it.value }
-        val cookieHeader = porNombre.entries.joinToString("; ") { "${it.key}=${it.value}" }
-        return mapOf("Cookie" to cookieHeader)
-    }
-
     private fun mostrarError(mensaje: String) {
         progress.visibility = View.GONE
-        agregarTextoDebug(mensaje)
-    }
-
-    // DEBUG TEMPORAL: acumula en vez de reemplazar, para que el
-    // diagnóstico de HttpURLConnection directo y el error final de
-    // ExoPlayer queden los dos visibles (llegan en momentos distintos,
-    // uno desde un hilo de fondo). Volver mostrarError a
-    // "errorMessage.text = mensaje" una vez resuelto el 302.
-    private fun agregarTextoDebug(mensaje: String) {
-        val actual = errorMessage.text.toString()
-        errorMessage.text = if (actual.isBlank()) mensaje else "$actual\n\n$mensaje"
+        errorMessage.text = mensaje
         errorMessage.visibility = View.VISIBLE
     }
 
