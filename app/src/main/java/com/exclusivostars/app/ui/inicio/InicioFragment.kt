@@ -25,7 +25,7 @@ import com.exclusivostars.app.ui.pelicula.PeliculaDetalleActivity
  * rotativo, RecyclerViews horizontales anidados para las filas.
  *
  * A propósito solo trae Películas y Series: Reels y Música ni
- * siquiera tienen /api/* todavía (siguen en "Próximamente" en
+ * siquiera tienen rutas /api todavía (siguen en "Próximamente" en
  * HomeActivity), así que sumarlas acá sería maquetar sin datos
  * reales. Se agregan como filas nuevas el día que tengan su API,
  * reusando FilaAdapter/FilaItem tal cual.
