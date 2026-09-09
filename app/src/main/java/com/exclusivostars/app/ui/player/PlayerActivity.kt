@@ -120,6 +120,34 @@ class PlayerActivity : AppCompatActivity() {
             // a leerlo). Sacar esto (cookieDebugTexto y su uso en
             // onPlayerError) una vez resuelto el 302.
             val cookieDebugTexto = "DEBUG Cookie: ${headersCookie["Cookie"] ?: "(NINGUNA — mapa vacío)"}"
+
+            // DEBUG TEMPORAL #2: hacer el mismo tipo de request que hace
+            // Media3 por debajo (java.net.HttpURLConnection, mismo
+            // proceso, mismo CookieHandler global activo) pero fuera de
+            // ExoPlayer, para ver si el 302 pasa igual con curl (donde
+            // no hay CookieHandler global de por medio) o si es propio
+            // de correr dentro de la app. Corre en background porque
+            // network en el hilo principal tira NetworkOnMainThreadException.
+            // Sacar este bloque entero (y el import de Thread/HttpURLConnection)
+            // una vez resuelto el 302.
+            Thread {
+                try {
+                    val conn = (java.net.URL(pelicula.sourceUrl).openConnection() as java.net.HttpURLConnection)
+                    conn.setRequestProperty("Cookie", headersCookie["Cookie"] ?: "")
+                    conn.instanceFollowRedirects = false
+                    val codigo = conn.responseCode
+                    val cookieHeaderReal = conn.getRequestProperty("Cookie")
+                    conn.disconnect()
+                    runOnUiThread {
+                        agregarTextoDebug("HttpURLConnection directo: código=$codigo, Cookie que quedó al conectar=$cookieHeaderReal")
+                    }
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        agregarTextoDebug("HttpURLConnection directo falló: ${e::class.simpleName} — ${e.message}")
+                    }
+                }
+            }.start()
+
             val dataSourceFactory = DefaultHttpDataSource.Factory()
                 .setDefaultRequestProperties(headersCookie)
 
@@ -196,7 +224,17 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun mostrarError(mensaje: String) {
         progress.visibility = View.GONE
-        errorMessage.text = mensaje
+        agregarTextoDebug(mensaje)
+    }
+
+    // DEBUG TEMPORAL: acumula en vez de reemplazar, para que el
+    // diagnóstico de HttpURLConnection directo y el error final de
+    // ExoPlayer queden los dos visibles (llegan en momentos distintos,
+    // uno desde un hilo de fondo). Volver mostrarError a
+    // "errorMessage.text = mensaje" una vez resuelto el 302.
+    private fun agregarTextoDebug(mensaje: String) {
+        val actual = errorMessage.text.toString()
+        errorMessage.text = if (actual.isBlank()) mensaje else "$actual\n\n$mensaje"
         errorMessage.visibility = View.VISIBLE
     }
 
