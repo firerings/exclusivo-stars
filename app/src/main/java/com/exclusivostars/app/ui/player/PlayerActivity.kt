@@ -114,8 +114,14 @@ class PlayerActivity : AppCompatActivity() {
             // hay que pasársela a mano acá, o el backend responde "no
             // autenticado" en video/subtítulos aunque la ficha haya
             // cargado bien.
+            val headersCookie = cookieHeadersPara(pelicula.sourceUrl)
+            android.widget.Toast.makeText(
+                this,
+                "Cookie: ${headersCookie["Cookie"] ?: "(NINGUNA - mapa vacio)"}",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
             val dataSourceFactory = DefaultHttpDataSource.Factory()
-                .setDefaultRequestProperties(cookieHeadersPara(pelicula.sourceUrl))
+                .setDefaultRequestProperties(headersCookie)
 
             val exoPlayer = ExoPlayer.Builder(this)
                 .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
