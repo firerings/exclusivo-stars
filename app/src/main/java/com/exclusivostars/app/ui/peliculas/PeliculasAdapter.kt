@@ -31,7 +31,6 @@ class PeliculasAdapter(
         val pelicula = items[position]
         holder.titulo.text = pelicula.titulo
         holder.anio.text = pelicula.anio.orEmpty()
-        holder.badgePendiente.visibility = if (pelicula.estado == "pendiente") View.VISIBLE else View.GONE
 
         Glide.with(holder.poster)
             .load(pelicula.posterUrl)
@@ -49,6 +48,5 @@ class PeliculasAdapter(
         val poster: ImageView = view.findViewById(R.id.poster)
         val titulo: TextView = view.findViewById(R.id.titulo)
         val anio: TextView = view.findViewById(R.id.anio)
-        val badgePendiente: TextView = view.findViewById(R.id.badge_pendiente)
     }
 }

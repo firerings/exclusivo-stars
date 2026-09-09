@@ -32,4 +32,13 @@ dependencies {
     // reinventar esto a mano no suma nada, es el widget estándar para
     // este patrón de navegación en Android.
     implementation("com.google.android.material:material:1.12.0")
+    // Media3 (sucesor de ExoPlayer clásico, mismo motor por debajo):
+    // media3-exoplayer es el core, -hls suma el extractor de
+    // master.m3u8 (películas "procesadas"), -ui da PlayerView con los
+    // controles nativos listos. El archivo directo de una película
+    // "pendiente" lo reproduce el propio core sin módulo aparte
+    // (mp4/mkv vía extractores estándar).
+    implementation("androidx.media3:media3-exoplayer:1.4.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.4.1")
+    implementation("androidx.media3:media3-ui:1.4.1")
 }

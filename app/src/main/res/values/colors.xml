@@ -8,4 +8,10 @@
     <color name="text_primary">#FFFFFF</color>
     <color name="text_secondary">#9E9EA5</color>
     <color name="error">#FF6B6B</color>
+    <!-- Mismo tono que .pelicula-aviso-directo en pelicula.css (web):
+         fondo/borde dorado muy tenue, texto dorado claro. -->
+    <color name="aviso_directo_bg">#1AD5AD5B</color>
+    <color name="aviso_directo_border">#40D5AD5B</color>
+    <color name="aviso_directo_texto">#D9C48F</color>
+    <color name="overlay_scrim">#B3000000</color>
 </resources>

@@ -9,13 +9,13 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.exclusivostars.app.R
 import com.exclusivostars.app.model.Pelicula
 import com.exclusivostars.app.network.PeliculasApi
+import com.exclusivostars.app.ui.pelicula.PeliculaDetalleActivity
 
 class PeliculasFragment : Fragment(R.layout.fragment_peliculas) {
 
@@ -38,10 +38,7 @@ class PeliculasFragment : Fragment(R.layout.fragment_peliculas) {
         emptyState = view.findViewById(R.id.empty_state)
 
         adapter = PeliculasAdapter { pelicula ->
-            // TODO: abrir ficha de la película cuando exista esa pantalla.
-            // Por ahora, confirmación mínima de que el click y los datos
-            // reales llegaron bien de punta a punta.
-            Toast.makeText(requireContext(), pelicula.titulo, Toast.LENGTH_SHORT).show()
+            startActivity(PeliculaDetalleActivity.crearIntent(requireContext(), pelicula.nombre))
         }
         recycler.layoutManager = GridLayoutManager(requireContext(), 3)
         recycler.adapter = adapter

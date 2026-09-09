@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mismo tono que .pelicula-detalle-puntuacion (web): fondo dorado muy tenue. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#1FD5AD5B" />
+    <corners android:radius="8dp" />
+</shape>

@@ -23,23 +23,10 @@
             android:scaleType="centerCrop"
             android:contentDescription="@null" />
 
-        <!-- Franja "Pendiente" para películas sin procesar todavía (estado != procesada) -->
-        <TextView
-            android:id="@+id/badge_pendiente"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|end"
-            android:layout_margin="6dp"
-            android:background="@drawable/badge_pendiente_background"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
-            android:text="@string/pelicula_pendiente_badge"
-            android:textColor="@android:color/white"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:visibility="gone" />
+        <!-- Sin badge de "pendiente" acá a propósito: la web tampoco lo
+             muestra en la grilla (peliculas.html), solo hay un aviso de
+             "reproducción directa" dentro de la ficha (pelicula.html).
+             Ver PeliculaActivity para esa versión. -->
     </androidx.cardview.widget.CardView>
 
     <TextView

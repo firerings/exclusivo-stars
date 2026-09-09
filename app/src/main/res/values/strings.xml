@@ -15,7 +15,6 @@
     <string name="register">Crear cuenta</string>
     <string name="privacy">Al continuar aceptas nuestros términos de servicio y política de privacidad.</string>
     <string name="peliculas_title">Películas</string>
-    <string name="pelicula_pendiente_badge">Pendiente</string>
     <string name="peliculas_vacio">Todavía no hay películas indexadas.</string>
     <string name="retry">Reintentar</string>
     <string name="logout">Cerrar sesión</string>
@@ -26,4 +25,17 @@
     <string name="proximamente_series">Series todavía no está lista — pronto.</string>
     <string name="proximamente_reels">Reels todavía no está listo — pronto.</string>
     <string name="proximamente_musica">Música todavía no está lista — pronto.</string>
+
+    <!-- Ficha de película -->
+    <string name="reproducir">Reproducir</string>
+    <string name="volver">Volver</string>
+    <string name="seccion_sinopsis">Sinopsis</string>
+    <string name="seccion_reparto">Reparto</string>
+    <string name="sin_sinopsis">Sin sinopsis todavía.</string>
+    <string name="sin_datos_meta">Sin datos todavía</string>
+    <string name="dirigida_por">Dirigida por %1$s</string>
+    <!-- Misma copy que .pelicula-aviso-directo en pelicula.html -->
+    <string name="aviso_directo_con_audio">Reproducción directa (sin calidad adaptativa) · Audio: %1$s</string>
+    <string name="aviso_directo_sin_audio">Reproducción directa · esta película todavía no se procesó para calidad adaptativa.</string>
+    <string name="error_cargar_pelicula">No se pudo cargar la película.</string>
 </resources>

@@ -1,0 +1,1055 @@
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -25,4 +25,17 @@
+     <string name="proximamente_series">Series todavía no está lista — pronto.</string>
+     <string name="proximamente_reels">Reels todavía no está listo — pronto.</string>
+     <string name="proximamente_musica">Música todavía no está lista — pronto.</string>
++
++    <!-- Ficha de película -->
++    <string name="reproducir">Reproducir</string>
++    <string name="volver">Volver</string>
++    <string name="seccion_sinopsis">Sinopsis</string>
++    <string name="seccion_reparto">Reparto</string>
++    <string name="sin_sinopsis">Sin sinopsis todavía.</string>
++    <string name="sin_datos_meta">Sin datos todavía</string>
++    <string name="dirigida_por">Dirigida por %1$s</string>
++    <!-- Misma copy que .pelicula-aviso-directo en pelicula.html -->
++    <string name="aviso_directo_con_audio">Reproducción directa (sin calidad adaptativa) · Audio: %1$s</string>
++    <string name="aviso_directo_sin_audio">Reproducción directa · esta película todavía no se procesó para calidad adaptativa.</string>
++    <string name="error_cargar_pelicula">No se pudo cargar la película.</string>
+ </resources>
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index 6364a70..a03b29f 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -32,4 +32,13 @@ dependencies {
+     // reinventar esto a mano no suma nada, es el widget estándar para
+     // este patrón de navegación en Android.
+     implementation("com.google.android.material:material:1.12.0")
++    // Media3 (sucesor de ExoPlayer clásico, mismo motor por debajo):
++    // media3-exoplayer es el core, -hls suma el extractor de
++    // master.m3u8 (películas "procesadas"), -ui da PlayerView con los
++    // controles nativos listos. El archivo directo de una película
++    // "pendiente" lo reproduce el propio core sin módulo aparte
++    // (mp4/mkv vía extractores estándar).
++    implementation("androidx.media3:media3-exoplayer:1.4.1")
++    implementation("androidx.media3:media3-exoplayer-hls:1.4.1")
++    implementation("androidx.media3:media3-ui:1.4.1")
+ }
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index 24cfb44..fdbf184 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -26,5 +26,13 @@
+         <activity
+             android:name=".ui.home.HomeActivity"
+             android:exported="false" />
++        <activity
++            android:name=".ui.pelicula.PeliculaDetalleActivity"
++            android:exported="false" />
++        <activity
++            android:name=".ui.player.PlayerActivity"
++            android:exported="false"
++            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
++            android:theme="@style/AppTheme" />
+     </application>
+ </manifest>
+diff --git a/app/src/main/java/com/exclusivostars/app/ui/peliculas/PeliculasFragment.kt b/app/src/main/java/com/exclusivostars/app/ui/peliculas/PeliculasFragment.kt
+index 971d516..408b930 100644
+--- a/app/src/main/java/com/exclusivostars/app/ui/peliculas/PeliculasFragment.kt
++++ b/app/src/main/java/com/exclusivostars/app/ui/peliculas/PeliculasFragment.kt
+@@ -9,13 +9,13 @@ import android.view.ViewGroup
+ import android.widget.Button
+ import android.widget.ProgressBar
+ import android.widget.TextView
+-import android.widget.Toast
+ import androidx.fragment.app.Fragment
+ import androidx.recyclerview.widget.GridLayoutManager
+ import androidx.recyclerview.widget.RecyclerView
+ import com.exclusivostars.app.R
+ import com.exclusivostars.app.model.Pelicula
+ import com.exclusivostars.app.network.PeliculasApi
++import com.exclusivostars.app.ui.pelicula.PeliculaDetalleActivity
+ 
+ class PeliculasFragment : Fragment(R.layout.fragment_peliculas) {
+ 
+@@ -38,10 +38,7 @@ class PeliculasFragment : Fragment(R.layout.fragment_peliculas) {
+         emptyState = view.findViewById(R.id.empty_state)
+ 
+         adapter = PeliculasAdapter { pelicula ->
+-            // TODO: abrir ficha de la película cuando exista esa pantalla.
+-            // Por ahora, confirmación mínima de que el click y los datos
+-            // reales llegaron bien de punta a punta.
+-            Toast.makeText(requireContext(), pelicula.titulo, Toast.LENGTH_SHORT).show()
++            startActivity(PeliculaDetalleActivity.crearIntent(requireContext(), pelicula.nombre))
+         }
+         recycler.layoutManager = GridLayoutManager(requireContext(), 3)
+         recycler.adapter = adapter
+diff --git a/app/src/main/java/com/exclusivostars/app/model/PeliculaDetalle.kt b/app/src/main/java/com/exclusivostars/app/model/PeliculaDetalle.kt
+new file mode 100644
+index 0000000..274f7a1
+--- /dev/null
++++ b/app/src/main/java/com/exclusivostars/app/model/PeliculaDetalle.kt
+@@ -0,0 +1,104 @@
++package com.exclusivostars.app.model
++
++import org.json.JSONObject
++
++/**
++ * Actor de la ficha, con la foto que ya cruza el backend contra
++ * personas/ (ver _reparto_con_fotos en blueprints/peliculas.py).
++ * fotoUrl null si el actor no tiene perfil/foto todavía — la UI cae a
++ * un placeholder con la inicial, mismo criterio que pelicula.html.
++ */
++data class Actor(
++    val nombre: String,
++    val slug: String?,
++    val fotoUrl: String?,
++) : java.io.Serializable {
++    companion object {
++        fun fromJson(json: JSONObject): Actor = Actor(
++            nombre = json.optString("nombre", ""),
++            slug = json.optString("slug", null),
++            fotoUrl = json.optString("foto_url", null),
++        )
++    }
++}
++
++/** Un subtítulo .vtt disponible para la película. */
++data class Subtitulo(
++    val lang: String?,
++    val label: String,
++    val url: String,
++) : java.io.Serializable {
++    companion object {
++        fun fromJson(json: JSONObject): Subtitulo = Subtitulo(
++            lang = json.optString("lang", null),
++            label = json.optString("label", ""),
++            url = json.getString("url"),
++        )
++    }
++}
++
++/**
++ * Mismos nombres de campo que /api/pelicula/<nombre> ya arma en el
++ * backend (api_pelicula en blueprints/peliculas.py) — igual criterio
++ * que Pelicula.kt: no inventar nomenclatura nueva del lado de la app.
++ *
++ * modoDirecto + sourceUrl son lo que necesita PlayerActivity para
++ * elegir cómo reproducir (HLS vs archivo directo) sin tener que
++ * volver a decidirlo del lado de la app — esa decisión ya la tomó el
++ * backend (ver _datos_reproduccion_pelicula).
++ */
++data class PeliculaDetalle(
++    val nombre: String,
++    val titulo: String,
++    val sinopsis: String?,
++    val anio: String?,
++    val duracion: String?,
++    val genero: List<String>,
++    val director: String?,
++    val puntuacion: Double?,
++    val fondoUrl: String?,
++    val tarjetaUrl: String?,
++    val posterUrl: String?,
++    val reparto: List<Actor>,
++    /** Descripción de la pista de audio embebida, solo relevante en modo directo (ver aviso). */
++    val audioTexto: String?,
++    val modoDirecto: Boolean,
++    val sourceUrl: String,
++    val subtitulos: List<Subtitulo>,
++) : java.io.Serializable {
++    companion object {
++        fun fromJson(json: JSONObject): PeliculaDetalle {
++            val generoArr = json.optJSONArray("genero")
++            val genero = buildList {
++                if (generoArr != null) for (i in 0 until generoArr.length()) add(generoArr.getString(i))
++            }
++            val repartoArr = json.optJSONArray("reparto")
++            val reparto = buildList {
++                if (repartoArr != null) for (i in 0 until repartoArr.length()) add(Actor.fromJson(repartoArr.getJSONObject(i)))
++            }
++            val subsArr = json.optJSONArray("subtitulos")
++            val subtitulos = buildList {
++                if (subsArr != null) for (i in 0 until subsArr.length()) add(Subtitulo.fromJson(subsArr.getJSONObject(i)))
++            }
++            val puntuacionRaw = json.opt("puntuacion")
++            return PeliculaDetalle(
++                nombre = json.getString("nombre"),
++                titulo = json.optString("titulo", json.getString("nombre")),
++                sinopsis = json.optString("sinopsis", null),
++                anio = json.optString("anio", null),
++                duracion = json.optString("duracion", null),
++                genero = genero,
++                director = json.optString("director", null),
++                puntuacion = (puntuacionRaw as? Number)?.toDouble(),
++                fondoUrl = json.optString("fondo_url", null),
++                tarjetaUrl = json.optString("tarjeta_url", null),
++                posterUrl = json.optString("poster_url", null),
++                reparto = reparto,
++                audioTexto = json.optString("audio_texto", null),
++                modoDirecto = json.optBoolean("modo_directo", false),
++                sourceUrl = json.getString("source_url"),
++                subtitulos = subtitulos,
++            )
++        }
++    }
++}
+diff --git a/app/src/main/java/com/exclusivostars/app/network/PeliculaApi.kt b/app/src/main/java/com/exclusivostars/app/network/PeliculaApi.kt
+new file mode 100644
+index 0000000..681db21
+--- /dev/null
++++ b/app/src/main/java/com/exclusivostars/app/network/PeliculaApi.kt
+@@ -0,0 +1,44 @@
++package com.exclusivostars.app.network
++
++import com.exclusivostars.app.model.PeliculaDetalle
++import java.net.URLEncoder
++
++/**
++ * Contrato esperado del backend (blueprints/peliculas.py, api_pelicula):
++ *
++ * GET /api/pelicula/<nombre>
++ *   200: {"ok": true, "pelicula": { ...ver PeliculaDetalle... }}
++ *   404: {"ok": false, "error": str}   // la carpeta no existe en el índice
++ *   401: si no hay sesión (mismo criterio que /api/peliculas)
++ *
++ * Mismo patrón que PeliculasApi: un objeto por endpoint, sin librería
++ * HTTP externa (ApiClient ya resuelve conexión/timeouts/parseo).
++ */
++object PeliculaApi {
++
++    sealed class Result {
++        data class Ok(val pelicula: PeliculaDetalle) : Result()
++        data class Error(val mensaje: String) : Result()
++    }
++
++    /** Llamar siempre desde background (Thread/executor), nunca desde el hilo principal. */
++    fun obtener(nombre: String): Result {
++        // nombre es el nombre de carpeta en movies/ (puede traer espacios,
++        // acentos, paréntesis del año, etc.) — hay que codificarlo para el
++        // path del request, no solo interpolarlo tal cual.
++        val nombreCodificado = URLEncoder.encode(nombre, "UTF-8")
++        val response = ApiClient.getJson("/api/pelicula/$nombreCodificado")
++
++        response.networkError?.let { return Result.Error(it) }
++        val json = response.body ?: return Result.Error("El servidor respondió vacío (código ${response.code}).")
++
++        if (!json.optBoolean("ok", false)) {
++            return Result.Error(json.optString("error", "No se pudo cargar la película."))
++        }
++
++        val peliculaJson = json.optJSONObject("pelicula")
++            ?: return Result.Error("Respuesta incompleta del servidor.")
++
++        return Result.Ok(PeliculaDetalle.fromJson(peliculaJson))
++    }
++}
+diff --git a/app/src/main/java/com/exclusivostars/app/ui/pelicula/PeliculaDetalleActivity.kt b/app/src/main/java/com/exclusivostars/app/ui/pelicula/PeliculaDetalleActivity.kt
+new file mode 100644
+index 0000000..99d6c81
+--- /dev/null
++++ b/app/src/main/java/com/exclusivostars/app/ui/pelicula/PeliculaDetalleActivity.kt
+@@ -0,0 +1,174 @@
++package com.exclusivostars.app.ui.pelicula
++
++import android.content.Context
++import android.content.Intent
++import android.os.Bundle
++import android.os.Handler
++import android.os.Looper
++import android.view.View
++import android.widget.Button
++import android.widget.FrameLayout
++import android.widget.ImageButton
++import android.widget.ImageView
++import android.widget.TextView
++import androidx.appcompat.app.AppCompatActivity
++import androidx.core.widget.NestedScrollView
++import androidx.recyclerview.widget.LinearLayoutManager
++import androidx.recyclerview.widget.RecyclerView
++import com.bumptech.glide.Glide
++import com.exclusivostars.app.R
++import com.exclusivostars.app.model.PeliculaDetalle
++import com.exclusivostars.app.network.PeliculaApi
++import com.exclusivostars.app.ui.player.PlayerActivity
++import kotlin.math.roundToInt
++
++class PeliculaDetalleActivity : AppCompatActivity() {
++
++    companion object {
++        private const val EXTRA_NOMBRE = "nombre"
++
++        fun crearIntent(context: Context, nombre: String): Intent =
++            Intent(context, PeliculaDetalleActivity::class.java).putExtra(EXTRA_NOMBRE, nombre)
++    }
++
++    private val main = Handler(Looper.getMainLooper())
++
++    private lateinit var scroll: NestedScrollView
++    private lateinit var progress: android.widget.ProgressBar
++    private lateinit var errorState: View
++    private lateinit var errorMessage: TextView
++
++    private lateinit var heroFondo: ImageView
++    private lateinit var heroTarjeta: FrameLayout
++    private lateinit var heroTarjetaImg: ImageView
++    private lateinit var titulo: TextView
++    private lateinit var meta: TextView
++    private lateinit var director: TextView
++    private lateinit var puntuacion: TextView
++    private lateinit var avisoDirecto: TextView
++    private lateinit var sinopsis: TextView
++    private lateinit var repartoTitulo: TextView
++    private lateinit var recyclerReparto: RecyclerView
++
++    private lateinit var nombre: String
++
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        setContentView(R.layout.activity_pelicula_detalle)
++
++        nombre = intent.getStringExtra(EXTRA_NOMBRE)
++            ?: throw IllegalStateException("PeliculaDetalleActivity requiere el extra '$EXTRA_NOMBRE'")
++
++        scroll = findViewById(R.id.scroll)
++        progress = findViewById(R.id.progress)
++        errorState = findViewById(R.id.error_state)
++        errorMessage = findViewById(R.id.error_message)
++
++        heroFondo = findViewById(R.id.hero_fondo)
++        heroTarjeta = findViewById(R.id.hero_tarjeta)
++        heroTarjetaImg = findViewById(R.id.hero_tarjeta_img)
++        titulo = findViewById(R.id.titulo)
++        meta = findViewById(R.id.meta)
++        director = findViewById(R.id.director)
++        puntuacion = findViewById(R.id.puntuacion)
++        avisoDirecto = findViewById(R.id.aviso_directo)
++        sinopsis = findViewById(R.id.sinopsis)
++        repartoTitulo = findViewById(R.id.reparto_titulo)
++        recyclerReparto = findViewById(R.id.recycler_reparto)
++        recyclerReparto.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
++
++        findViewById<ImageButton>(R.id.back_button).setOnClickListener { finish() }
++        findViewById<Button>(R.id.retry_button).setOnClickListener { cargar() }
++
++        cargar()
++    }
++
++    private fun cargar() {
++        mostrarCargando()
++        Thread {
++            val result = PeliculaApi.obtener(nombre)
++            main.post {
++                if (isFinishing) return@post
++                when (result) {
++                    is PeliculaApi.Result.Ok -> mostrarFicha(result.pelicula)
++                    is PeliculaApi.Result.Error -> mostrarError(result.mensaje)
++                }
++            }
++        }.start()
++    }
++
++    private fun mostrarCargando() {
++        progress.visibility = View.VISIBLE
++        scroll.visibility = View.GONE
++        errorState.visibility = View.GONE
++    }
++
++    private fun mostrarError(mensaje: String) {
++        progress.visibility = View.GONE
++        scroll.visibility = View.GONE
++        errorMessage.text = mensaje
++        errorState.visibility = View.VISIBLE
++    }
++
++    private fun mostrarFicha(pelicula: PeliculaDetalle) {
++        progress.visibility = View.GONE
++        errorState.visibility = View.GONE
++        scroll.visibility = View.VISIBLE
++
++        Glide.with(heroFondo).load(pelicula.fondoUrl).centerCrop().into(heroFondo)
++        Glide.with(heroTarjetaImg)
++            .load(pelicula.tarjetaUrl)
++            .placeholder(R.drawable.poster_placeholder_background)
++            .error(R.drawable.poster_placeholder_background)
++            .centerCrop()
++            .into(heroTarjetaImg)
++        heroTarjeta.setOnClickListener { PlayerActivity.iniciar(this, pelicula) }
++
++        titulo.text = pelicula.titulo
++
++        // Mismo orden que pelicula-detalle-meta en la web: duración · género,
++        // o "Sin datos todavía" si no hay ninguno de los dos.
++        val partesMeta = buildList {
++            pelicula.duracion?.let { add(it) }
++            if (pelicula.genero.isNotEmpty()) add(pelicula.genero.joinToString(", "))
++        }
++        meta.text = if (partesMeta.isNotEmpty()) partesMeta.joinToString(" · ") else getString(R.string.sin_datos_meta)
++
++        if (pelicula.director != null) {
++            director.text = getString(R.string.dirigida_por, pelicula.director)
++            director.visibility = View.VISIBLE
++        } else {
++            director.visibility = View.GONE
++        }
++
++        if (pelicula.puntuacion != null && pelicula.puntuacion > 0) {
++            val pct = (pelicula.puntuacion * 10).roundToInt()
++            puntuacion.text = "$pct%"
++            puntuacion.visibility = View.VISIBLE
++        } else {
++            puntuacion.visibility = View.GONE
++        }
++
++        if (pelicula.modoDirecto) {
++            avisoDirecto.text = if (pelicula.audioTexto != null) {
++                getString(R.string.aviso_directo_con_audio, pelicula.audioTexto)
++            } else {
++                getString(R.string.aviso_directo_sin_audio)
++            }
++            avisoDirecto.visibility = View.VISIBLE
++        } else {
++            avisoDirecto.visibility = View.GONE
++        }
++
++        sinopsis.text = if (!pelicula.sinopsis.isNullOrBlank()) pelicula.sinopsis else getString(R.string.sin_sinopsis)
++
++        if (pelicula.reparto.isNotEmpty()) {
++            recyclerReparto.adapter = RepartoAdapter(pelicula.reparto)
++            repartoTitulo.visibility = View.VISIBLE
++            recyclerReparto.visibility = View.VISIBLE
++        } else {
++            repartoTitulo.visibility = View.GONE
++            recyclerReparto.visibility = View.GONE
++        }
++    }
++}
+diff --git a/app/src/main/java/com/exclusivostars/app/ui/pelicula/RepartoAdapter.kt b/app/src/main/java/com/exclusivostars/app/ui/pelicula/RepartoAdapter.kt
+new file mode 100644
+index 0000000..e29e449
+--- /dev/null
++++ b/app/src/main/java/com/exclusivostars/app/ui/pelicula/RepartoAdapter.kt
+@@ -0,0 +1,45 @@
++package com.exclusivostars.app.ui.pelicula
++
++import android.view.LayoutInflater
++import android.view.View
++import android.view.ViewGroup
++import android.widget.ImageView
++import android.widget.TextView
++import androidx.recyclerview.widget.RecyclerView
++import com.bumptech.glide.Glide
++import com.exclusivostars.app.R
++import com.exclusivostars.app.model.Actor
++
++class RepartoAdapter(private val reparto: List<Actor>) : RecyclerView.Adapter<RepartoAdapter.VH>() {
++
++    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
++        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_actor, parent, false)
++        return VH(view)
++    }
++
++    override fun onBindViewHolder(holder: VH, position: Int) {
++        val actor = reparto[position]
++        holder.nombre.text = actor.nombre
++
++        if (actor.fotoUrl != null) {
++            Glide.with(holder.foto)
++                .load(actor.fotoUrl)
++                .placeholder(R.drawable.actor_foto_placeholder_background)
++                .error(R.drawable.actor_foto_placeholder_background)
++                .centerCrop()
++                .into(holder.foto)
++        } else {
++            // Sin perfil/foto todavía en personas/ — mismo criterio que
++            // pelicula.html: placeholder liso, sin romper el layout.
++            holder.foto.setImageDrawable(null)
++            holder.foto.setBackgroundResource(R.drawable.actor_foto_placeholder_background)
++        }
++    }
++
++    override fun getItemCount(): Int = reparto.size
++
++    class VH(view: View) : RecyclerView.ViewHolder(view) {
++        val foto: ImageView = view.findViewById(R.id.foto)
++        val nombre: TextView = view.findViewById(R.id.nombre)
++    }
++}
+diff --git a/app/src/main/java/com/exclusivostars/app/ui/player/PlayerActivity.kt b/app/src/main/java/com/exclusivostars/app/ui/player/PlayerActivity.kt
+new file mode 100644
+index 0000000..96edc4f
+--- /dev/null
++++ b/app/src/main/java/com/exclusivostars/app/ui/player/PlayerActivity.kt
+@@ -0,0 +1,141 @@
++package com.exclusivostars.app.ui.player
++
++import android.content.Context
++import android.content.Intent
++import android.content.pm.ActivityInfo
++import android.net.Uri
++import android.os.Build
++import android.os.Bundle
++import android.view.View
++import android.view.WindowInsets
++import android.view.WindowInsetsController
++import android.widget.TextView
++import androidx.appcompat.app.AppCompatActivity
++import androidx.media3.common.MediaItem
++import androidx.media3.common.MimeTypes
++import androidx.media3.common.PlaybackException
++import androidx.media3.common.Player
++import androidx.media3.exoplayer.ExoPlayer
++import androidx.media3.ui.PlayerView
++import com.exclusivostars.app.R
++import com.exclusivostars.app.model.PeliculaDetalle
++
++/**
++ * Reproductor standalone (pantalla completa, orientación horizontal
++ * forzada). Recibe la ficha entera vía Serializable en vez de solo la
++ * URL: modoDirecto/sourceUrl/subtitulos ya vienen decididos por el
++ * backend (ver _datos_reproduccion_pelicula) — la app no tiene que
++ * volver a inferir nada, solo pasárselo a Media3.
++ *
++ * Media3 elige el tipo de fuente según la URL: master.m3u8 -> HLS (con
++ * el módulo media3-exoplayer-hls agregado en build.gradle.kts),
++ * cualquier otra extensión de video -> extractor progresivo estándar.
++ * No hace falta que la app distinga los dos casos a mano.
++ */
++class PlayerActivity : AppCompatActivity() {
++
++    companion object {
++        private const val EXTRA_PELICULA = "pelicula"
++
++        fun iniciar(context: Context, pelicula: PeliculaDetalle) {
++            context.startActivity(
++                Intent(context, PlayerActivity::class.java).putExtra(EXTRA_PELICULA, pelicula)
++            )
++        }
++    }
++
++    private lateinit var playerView: PlayerView
++    private lateinit var progress: android.widget.ProgressBar
++    private lateinit var errorMessage: TextView
++    private var player: ExoPlayer? = null
++
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
++        ocultarBarrasSistema()
++        setContentView(R.layout.activity_player)
++
++        playerView = findViewById(R.id.player_view)
++        progress = findViewById(R.id.progress)
++        errorMessage = findViewById(R.id.error_message)
++    }
++
++    private fun ocultarBarrasSistema() {
++        // Reproducción a pantalla completa, igual criterio que el
++        // reproductor embebido de la web (oculta chrome del navegador
++        // al entrar en fullscreen vía player.js).
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
++            window.setDecorFitsSystemWindows(false)
++            window.insetsController?.let {
++                it.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
++                it.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
++            }
++        } else {
++            @Suppress("DEPRECATION")
++            window.decorView.systemUiVisibility = (
++                View.SYSTEM_UI_FLAG_FULLSCREEN or
++                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
++                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
++                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
++                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
++                )
++        }
++    }
++
++    override fun onStart() {
++        super.onStart()
++        inicializarPlayer()
++    }
++
++    override fun onStop() {
++        super.onStop()
++        liberarPlayer()
++    }
++
++    private fun inicializarPlayer() {
++        @Suppress("DEPRECATION")
++        val pelicula = intent.getSerializableExtra(EXTRA_PELICULA) as? PeliculaDetalle
++            ?: return mostrarError(getString(R.string.error_cargar_pelicula))
++
++        val exoPlayer = ExoPlayer.Builder(this).build()
++        player = exoPlayer
++        playerView.player = exoPlayer
++
++        exoPlayer.addListener(object : Player.Listener {
++            override fun onPlaybackStateChanged(playbackState: Int) {
++                progress.visibility = if (playbackState == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
++            }
++
++            override fun onPlayerError(error: PlaybackException) {
++                mostrarError(error.localizedMessage ?: getString(R.string.error_cargar_pelicula))
++            }
++        })
++
++        val builder = MediaItem.Builder().setUri(Uri.parse(pelicula.sourceUrl))
++        if (pelicula.subtitulos.isNotEmpty()) {
++            val subs = pelicula.subtitulos.map { sub ->
++                MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.url))
++                    .setMimeType(MimeTypes.TEXT_VTT)
++                    .setLanguage(sub.lang)
++                    .setLabel(sub.label)
++                    .build()
++            }
++            builder.setSubtitleConfigurations(subs)
++        }
++
++        exoPlayer.setMediaItem(builder.build())
++        exoPlayer.playWhenReady = true
++        exoPlayer.prepare()
++    }
++
++    private fun mostrarError(mensaje: String) {
++        progress.visibility = View.GONE
++        errorMessage.text = mensaje
++        errorMessage.visibility = View.VISIBLE
++    }
++
++    private fun liberarPlayer() {
++        player?.release()
++        player = null
++    }
++}
+diff --git a/app/src/main/res/drawable/actor_chip_background.xml b/app/src/main/res/drawable/actor_chip_background.xml
+new file mode 100644
+index 0000000..78beb79
+--- /dev/null
++++ b/app/src/main/res/drawable/actor_chip_background.xml
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Mismo espíritu que .pelicula-actor-chip-foto en pelicula.css (web):
++     píldora con fondo blanco muy tenue y borde sutil. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <solid android:color="#08FFFFFF" />
++    <corners android:radius="999dp" />
++    <stroke android:width="1dp" android:color="#14FFFFFF" />
++</shape>
+diff --git a/app/src/main/res/drawable/actor_foto_placeholder_background.xml b/app/src/main/res/drawable/actor_foto_placeholder_background.xml
+new file mode 100644
+index 0000000..d0e5e2c
+--- /dev/null
++++ b/app/src/main/res/drawable/actor_foto_placeholder_background.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<shape xmlns:android="http://schemas.android.com/apk/res/android"
++    android:shape="oval">
++    <solid android:color="@color/surface" />
++</shape>
+diff --git a/app/src/main/res/drawable/aviso_directo_background.xml b/app/src/main/res/drawable/aviso_directo_background.xml
+new file mode 100644
+index 0000000..28b6012
+--- /dev/null
++++ b/app/src/main/res/drawable/aviso_directo_background.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <solid android:color="@color/aviso_directo_bg" />
++    <corners android:radius="8dp" />
++    <stroke android:width="1dp" android:color="@color/aviso_directo_border" />
++</shape>
+diff --git a/app/src/main/res/drawable/back_button_background.xml b/app/src/main/res/drawable/back_button_background.xml
+new file mode 100644
+index 0000000..9e592d7
+--- /dev/null
++++ b/app/src/main/res/drawable/back_button_background.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<shape xmlns:android="http://schemas.android.com/apk/res/android"
++    android:shape="oval">
++    <solid android:color="@color/overlay_scrim" />
++</shape>
+diff --git a/app/src/main/res/drawable/hero_degradado.xml b/app/src/main/res/drawable/hero_degradado.xml
+new file mode 100644
+index 0000000..5d3c124
+--- /dev/null
++++ b/app/src/main/res/drawable/hero_degradado.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Mismo espíritu que .pelicula-hero-degradado (web): degradado hacia
++     abajo para que el hero se funda con el resto de la ficha. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <gradient
++        android:type="linear"
++        android:angle="90"
++        android:startColor="#00000000"
++        android:endColor="#E60D0D0F" />
++</shape>
+diff --git a/app/src/main/res/drawable/ic_play_circle.xml b/app/src/main/res/drawable/ic_play_circle.xml
+new file mode 100644
+index 0000000..78afc4a
+--- /dev/null
++++ b/app/src/main/res/drawable/ic_play_circle.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Mismo espíritu que .pelicula-hero-play en pelicula.css (web):
++     círculo rojo/dorado con un triángulo de play centrado. -->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="68dp"
++    android:height="68dp"
++    android:viewportWidth="68"
++    android:viewportHeight="68">
++    <path
++        android:pathData="M34,2 A32,32 0 1,0 34.01,2 Z"
++        android:fillColor="#E3152F" />
++    <path
++        android:pathData="M27,20 L50,34 L27,48 Z"
++        android:fillColor="#FFFFFF" />
++</vector>
+diff --git a/app/src/main/res/drawable/puntuacion_background.xml b/app/src/main/res/drawable/puntuacion_background.xml
+new file mode 100644
+index 0000000..7afc451
+--- /dev/null
++++ b/app/src/main/res/drawable/puntuacion_background.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Mismo tono que .pelicula-detalle-puntuacion (web): fondo dorado muy tenue. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <solid android:color="#1FD5AD5B" />
++    <corners android:radius="8dp" />
++</shape>
+diff --git a/app/src/main/res/layout/activity_pelicula_detalle.xml b/app/src/main/res/layout/activity_pelicula_detalle.xml
+new file mode 100644
+index 0000000..7128716
+--- /dev/null
++++ b/app/src/main/res/layout/activity_pelicula_detalle.xml
+@@ -0,0 +1,224 @@
++<?xml version="1.0" encoding="utf-8"?>
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:background="@color/background">
++
++    <androidx.core.widget.NestedScrollView
++        android:id="@+id/scroll"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"
++        android:visibility="gone">
++
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:orientation="vertical"
++            android:paddingBottom="32dp">
++
++            <!-- Hero: fondo atmosférico difuminado + tarjeta nítida
++                 clickeable con el play encima. Mismo orden de prioridad
++                 fondo > tarjeta > poster que pelicula.html. -->
++            <FrameLayout
++                android:layout_width="match_parent"
++                android:layout_height="260dp">
++
++                <ImageView
++                    android:id="@+id/hero_fondo"
++                    android:layout_width="match_parent"
++                    android:layout_height="match_parent"
++                    android:scaleType="centerCrop"
++                    android:contentDescription="@null" />
++
++                <!-- Degradado hacia el fondo de la pantalla, igual criterio
++                     que .pelicula-hero-degradado (web). -->
++                <View
++                    android:layout_width="match_parent"
++                    android:layout_height="match_parent"
++                    android:background="@drawable/hero_degradado" />
++
++                <FrameLayout
++                    android:id="@+id/hero_tarjeta"
++                    android:layout_width="220dp"
++                    android:layout_height="124dp"
++                    android:layout_gravity="center">
++
++                    <ImageView
++                        android:id="@+id/hero_tarjeta_img"
++                        android:layout_width="match_parent"
++                        android:layout_height="match_parent"
++                        android:scaleType="centerCrop"
++                        android:background="@drawable/poster_placeholder_background"
++                        android:contentDescription="@null" />
++
++                    <ImageView
++                        android:layout_width="52dp"
++                        android:layout_height="52dp"
++                        android:layout_gravity="center"
++                        android:src="@drawable/ic_play_circle"
++                        android:contentDescription="@string/reproducir" />
++                </FrameLayout>
++            </FrameLayout>
++
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:orientation="vertical"
++                android:paddingStart="20dp"
++                android:paddingEnd="20dp"
++                android:paddingTop="18dp">
++
++                <TextView
++                    android:id="@+id/titulo"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:textColor="@color/text_primary"
++                    android:textSize="24sp"
++                    android:textStyle="bold" />
++
++                <TextView
++                    android:id="@+id/meta"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:layout_marginTop="8dp"
++                    android:textColor="@color/text_secondary"
++                    android:textSize="13sp" />
++
++                <TextView
++                    android:id="@+id/director"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:layout_marginTop="4dp"
++                    android:textColor="@color/text_secondary"
++                    android:textSize="13sp"
++                    android:visibility="gone" />
++
++                <!-- Puntuación TMDB: versión simple (píldora con %) en vez
++                     del anillo SVG de la web — el anillo real queda para
++                     el pase visual (fase de paridad general). -->
++                <TextView
++                    android:id="@+id/puntuacion"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:layout_marginTop="10dp"
++                    android:background="@drawable/puntuacion_background"
++                    android:paddingStart="9dp"
++                    android:paddingEnd="9dp"
++                    android:paddingTop="5dp"
++                    android:paddingBottom="5dp"
++                    android:textColor="@color/gold"
++                    android:textStyle="bold"
++                    android:textSize="12sp"
++                    android:visibility="gone" />
++
++                <!-- Aviso de reproducción directa — misma copy que
++                     .pelicula-aviso-directo en pelicula.html. -->
++                <TextView
++                    android:id="@+id/aviso_directo"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:layout_marginTop="11dp"
++                    android:background="@drawable/aviso_directo_background"
++                    android:paddingStart="12dp"
++                    android:paddingEnd="12dp"
++                    android:paddingTop="8dp"
++                    android:paddingBottom="8dp"
++                    android:textColor="@color/aviso_directo_texto"
++                    android:textSize="12sp"
++                    android:visibility="gone" />
++
++                <TextView
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:layout_marginTop="26dp"
++                    android:paddingBottom="10dp"
++                    android:text="@string/seccion_sinopsis"
++                    android:textColor="@color/text_primary"
++                    android:textSize="15sp"
++                    android:textStyle="bold" />
++
++                <TextView
++                    android:id="@+id/sinopsis"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:textColor="@color/text_secondary"
++                    android:textSize="14sp"
++                    android:lineSpacingMultiplier="1.3" />
++
++                <TextView
++                    android:id="@+id/reparto_titulo"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:layout_marginTop="26dp"
++                    android:paddingBottom="10dp"
++                    android:text="@string/seccion_reparto"
++                    android:textColor="@color/text_primary"
++                    android:textSize="15sp"
++                    android:textStyle="bold"
++                    android:visibility="gone" />
++
++                <!-- layoutManager horizontal se fija en código
++                     (PeliculaDetalleActivity): el atributo XML
++                     android:orientation no aplica a RecyclerView, solo a
++                     LinearLayoutManager. -->
++                <androidx.recyclerview.widget.RecyclerView
++                    android:id="@+id/recycler_reparto"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:clipToPadding="false"
++                    android:visibility="gone" />
++
++            </LinearLayout>
++        </LinearLayout>
++    </androidx.core.widget.NestedScrollView>
++
++    <ImageButton
++        android:id="@+id/back_button"
++        android:layout_width="40dp"
++        android:layout_height="40dp"
++        android:layout_margin="14dp"
++        android:background="@drawable/back_button_background"
++        android:contentDescription="@string/volver"
++        android:src="@android:drawable/ic_menu_close_clear_cancel"
++        app:tint="@android:color/white" />
++
++    <ProgressBar
++        android:id="@+id/progress"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_gravity="center" />
++
++    <LinearLayout
++        android:id="@+id/error_state"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_gravity="center"
++        android:orientation="vertical"
++        android:gravity="center_horizontal"
++        android:paddingStart="32dp"
++        android:paddingEnd="32dp"
++        android:visibility="gone">
++
++        <TextView
++            android:id="@+id/error_message"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:gravity="center"
++            android:textColor="@color/text_secondary"
++            android:textSize="14sp" />
++
++        <Button
++            android:id="@+id/retry_button"
++            android:layout_width="wrap_content"
++            android:layout_height="46dp"
++            android:layout_marginTop="16dp"
++            android:paddingStart="24dp"
++            android:paddingEnd="24dp"
++            android:text="@string/retry"
++            android:textAllCaps="false"
++            android:textColor="@android:color/white"
++            android:background="@drawable/primary_button_background" />
++    </LinearLayout>
++
++</FrameLayout>
+diff --git a/app/src/main/res/layout/activity_player.xml b/app/src/main/res/layout/activity_player.xml
+new file mode 100644
+index 0000000..5f5a505
+--- /dev/null
++++ b/app/src/main/res/layout/activity_player.xml
+@@ -0,0 +1,31 @@
++<?xml version="1.0" encoding="utf-8"?>
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:background="@android:color/black">
++
++    <androidx.media3.ui.PlayerView
++        android:id="@+id/player_view"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"
++        android:keepScreenOn="true" />
++
++    <ProgressBar
++        android:id="@+id/progress"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_gravity="center" />
++
++    <TextView
++        android:id="@+id/error_message"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_gravity="center"
++        android:gravity="center"
++        android:paddingStart="32dp"
++        android:paddingEnd="32dp"
++        android:textColor="@android:color/white"
++        android:textSize="14sp"
++        android:visibility="gone" />
++
++</FrameLayout>
+diff --git a/app/src/main/res/layout/item_actor.xml b/app/src/main/res/layout/item_actor.xml
+new file mode 100644
+index 0000000..1f00727
+--- /dev/null
++++ b/app/src/main/res/layout/item_actor.xml
+@@ -0,0 +1,45 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto"
++    android:layout_width="wrap_content"
++    android:layout_height="wrap_content"
++    android:layout_marginEnd="8dp"
++    android:orientation="horizontal"
++    android:gravity="center_vertical"
++    android:background="@drawable/actor_chip_background"
++    android:paddingStart="6dp"
++    android:paddingEnd="12dp"
++    android:paddingTop="6dp"
++    android:paddingBottom="6dp">
++
++    <!-- Foto circular de 28dp (recorte hecho a mano con un CardView
++         redondo en vez de un ImageView + clipToOutline: menos código y
++         Glide ya sabe cachear sobre este mismo contenedor). -->
++    <androidx.cardview.widget.CardView
++        android:layout_width="28dp"
++        android:layout_height="28dp"
++        app:cardCornerRadius="14dp"
++        app:cardElevation="0dp"
++        app:cardBackgroundColor="@color/surface">
++
++        <ImageView
++            android:id="@+id/foto"
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:scaleType="centerCrop"
++            android:contentDescription="@null" />
++
++    </androidx.cardview.widget.CardView>
++
++    <TextView
++        android:id="@+id/nombre"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_marginStart="8dp"
++        android:maxWidth="140dp"
++        android:ellipsize="end"
++        android:maxLines="1"
++        android:textColor="@color/text_primary"
++        android:textSize="12sp" />
++
++</LinearLayout>
+diff --git a/app/src/main/res/values/colors.xml b/app/src/main/res/values/colors.xml
+index c7cee09..d1acc5d 100644
+--- a/app/src/main/res/values/colors.xml
++++ b/app/src/main/res/values/colors.xml
+@@ -8,4 +8,10 @@
+     <color name="text_primary">#FFFFFF</color>
+     <color name="text_secondary">#9E9EA5</color>
+     <color name="error">#FF6B6B</color>
++    <!-- Mismo tono que .pelicula-aviso-directo en pelicula.css (web):
++         fondo/borde dorado muy tenue, texto dorado claro. -->
++    <color name="aviso_directo_bg">#1AD5AD5B</color>
++    <color name="aviso_directo_border">#40D5AD5B</color>
++    <color name="aviso_directo_texto">#D9C48F</color>
++    <color name="overlay_scrim">#B3000000</color>
+ </resources>

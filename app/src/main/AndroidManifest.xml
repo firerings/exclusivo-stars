@@ -26,5 +26,13 @@
         <activity
             android:name=".ui.home.HomeActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.pelicula.PeliculaDetalleActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.player.PlayerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:theme="@style/AppTheme" />
     </application>
 </manifest>
