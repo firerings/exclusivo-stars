@@ -15,10 +15,14 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.exclusivostars.app.R
 import com.exclusivostars.app.model.PeliculaDetalle
+import java.net.CookieHandler
+import java.net.URI
 
 /**
  * Reproductor standalone (pantalla completa, orientación horizontal
@@ -97,7 +101,18 @@ class PlayerActivity : AppCompatActivity() {
         val pelicula = intent.getSerializableExtra(EXTRA_PELICULA) as? PeliculaDetalle
             ?: return mostrarError(getString(R.string.error_cargar_pelicula))
 
-        val exoPlayer = ExoPlayer.Builder(this).build()
+        // Media3 no manda sola la cookie de sesión (a diferencia de
+        // Glide/ApiClient, que corren sobre HttpURLConnection puro y sí
+        // la sacan del CookieHandler.setDefault() de MainActivity):
+        // hay que pasársela a mano acá, o el backend responde "no
+        // autenticado" en video/subtítulos aunque la ficha haya
+        // cargado bien.
+        val dataSourceFactory = DefaultHttpDataSource.Factory()
+            .setDefaultRequestProperties(cookieHeadersPara(pelicula.sourceUrl))
+
+        val exoPlayer = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            .build()
         player = exoPlayer
         playerView.player = exoPlayer
 
@@ -126,6 +141,21 @@ class PlayerActivity : AppCompatActivity() {
         exoPlayer.setMediaItem(builder.build())
         exoPlayer.playWhenReady = true
         exoPlayer.prepare()
+    }
+
+    /** Cookie de sesión ya guardada por el CookieManager global (ver
+     * MainActivity), formateada como request header para
+     * DefaultHttpDataSource.Factory.setDefaultRequestProperties(). Mismo
+     * mecanismo que HttpURLConnection resuelve solo para Glide/ApiClient;
+     * Media3 no lo hace, así que hay que armarlo a mano. Devuelve un mapa
+     * vacío si por algún motivo no hay cookie (el request sigue, y el
+     * backend lo va a rechazar igual que si no hubiera sesión — no hace
+     * falta chequearlo antes acá). */
+    private fun cookieHeadersPara(url: String): Map<String, String> {
+        val cookieHandler = CookieHandler.getDefault() ?: return emptyMap()
+        val cookies = cookieHandler.get(URI.create(url), emptyMap<String, List<String>>())
+        val cookieHeader = cookies["Cookie"]?.joinToString("; ") ?: return emptyMap()
+        return mapOf("Cookie" to cookieHeader)
     }
 
     private fun mostrarError(mensaje: String) {
