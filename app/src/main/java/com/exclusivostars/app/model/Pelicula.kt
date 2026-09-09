@@ -20,6 +20,8 @@ data class Pelicula(
     val anio: String?,
     val duracion: String?,
     val posterUrl: String?,
+    /** fondo.jpg > tarjeta.jpg > poster — mismo criterio que el hero de la web (_construir_hero). */
+    val fondoUrl: String?,
     /** "procesada" (HLS listo) o "pendiente" (se reproduce directo mientras tanto). */
     val estado: String?,
 ) {
@@ -31,6 +33,7 @@ data class Pelicula(
             anio = json.optString("anio", null),
             duracion = json.optString("duracion", null),
             posterUrl = json.optString("poster_url", null),
+            fondoUrl = json.optString("fondo_url", null),
             estado = json.optString("estado", null),
         )
     }

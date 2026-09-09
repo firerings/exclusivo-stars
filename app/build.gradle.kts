@@ -21,6 +21,9 @@ kotlin {
 }
 dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    // ViewPager2 para el hero rotativo de Inicio (equivalente nativo al
+    // carrusel de hero-carrusel.js en la web).
+    implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("androidx.cardview:cardview:1.0.0")
     // ConstraintLayout: necesario para el hero de pelicula_detalle
     // (tarjeta ancha con ratio 16:9 anclada abajo del contenedor,

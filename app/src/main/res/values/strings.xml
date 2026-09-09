@@ -18,6 +18,7 @@
     <string name="peliculas_vacio">Todavía no hay películas indexadas.</string>
     <string name="retry">Reintentar</string>
     <string name="logout">Cerrar sesión</string>
+    <string name="nav_inicio">Inicio</string>
     <string name="nav_peliculas">Películas</string>
     <string name="nav_series">Series</string>
     <string name="nav_reels">Reels</string>

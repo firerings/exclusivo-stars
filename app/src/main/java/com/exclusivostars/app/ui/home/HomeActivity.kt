@@ -10,6 +10,7 @@ import com.exclusivostars.app.MediaflixApp
 import com.exclusivostars.app.R
 import com.exclusivostars.app.ui.auth.MainActivity
 import com.exclusivostars.app.ui.common.ComingSoonFragment
+import com.exclusivostars.app.ui.inicio.InicioFragment
 import com.exclusivostars.app.ui.peliculas.PeliculasFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
@@ -37,6 +38,7 @@ class HomeActivity : AppCompatActivity() {
 
         bottomNav.setOnItemSelectedListener { item ->
             val (fragment, title) = when (item.itemId) {
+                R.id.nav_inicio -> InicioFragment() to getString(R.string.nav_inicio)
                 R.id.nav_peliculas -> PeliculasFragment() to getString(R.string.nav_peliculas)
                 R.id.nav_series -> ComingSoonFragment.nuevaInstancia(getString(R.string.proximamente_series)) to getString(R.string.nav_series)
                 R.id.nav_reels -> ComingSoonFragment.nuevaInstancia(getString(R.string.proximamente_reels)) to getString(R.string.nav_reels)
@@ -49,7 +51,7 @@ class HomeActivity : AppCompatActivity() {
         }
 
         if (savedInstanceState == null) {
-            bottomNav.selectedItemId = R.id.nav_peliculas
+            bottomNav.selectedItemId = R.id.nav_inicio
         }
     }
 
