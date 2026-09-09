@@ -26,7 +26,16 @@ object PeliculaApi {
         // nombre es el nombre de carpeta en movies/ (puede traer espacios,
         // acentos, paréntesis del año, etc.) — hay que codificarlo para el
         // path del request, no solo interpolarlo tal cual.
-        val nombreCodificado = URLEncoder.encode(nombre, "UTF-8")
+        //
+        // OJO: URLEncoder.encode() está pensado para query strings
+        // (application/x-www-form-urlencoded), donde el espacio se
+        // codifica como "+". En un segmento de PATH ese "+" es literal:
+        // Werkzeug solo decodifica "+" como espacio en el query string,
+        // nunca en el path. Sin este reemplazo, "Prey (2022)" llega al
+        // backend como "Prey+(2022)", no matchea ninguna carpeta del
+        // índice y responde 404. Por eso el "+" hay que pasarlo a "%20"
+        // a mano después de codificar.
+        val nombreCodificado = URLEncoder.encode(nombre, "UTF-8").replace("+", "%20")
         val response = ApiClient.getJson("/api/pelicula/$nombreCodificado")
 
         response.networkError?.let { return Result.Error(it) }
