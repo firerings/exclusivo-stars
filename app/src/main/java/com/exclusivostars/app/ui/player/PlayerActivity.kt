@@ -115,11 +115,11 @@ class PlayerActivity : AppCompatActivity() {
             // autenticado" en video/subtítulos aunque la ficha haya
             // cargado bien.
             val headersCookie = cookieHeadersPara(pelicula.sourceUrl)
-            android.widget.Toast.makeText(
-                this,
-                "Cookie: ${headersCookie["Cookie"] ?: "(NINGUNA - mapa vacio)"}",
-                android.widget.Toast.LENGTH_LONG
-            ).show()
+            // DEBUG TEMPORAL: se guarda para meterla en el mensaje de
+            // error de más abajo (el Toast duraba <1s y no daba tiempo
+            // a leerlo). Sacar esto (cookieDebugTexto y su uso en
+            // onPlayerError) una vez resuelto el 302.
+            val cookieDebugTexto = "DEBUG Cookie: ${headersCookie["Cookie"] ?: "(NINGUNA — mapa vacío)"}"
             val dataSourceFactory = DefaultHttpDataSource.Factory()
                 .setDefaultRequestProperties(headersCookie)
 
@@ -135,7 +135,7 @@ class PlayerActivity : AppCompatActivity() {
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    mostrarError("ExoPlayer: ${error.errorCodeName} — ${error.localizedMessage}")
+                    mostrarError("ExoPlayer: ${error.errorCodeName} — ${error.localizedMessage}\n\n$cookieDebugTexto")
                 }
             })
 
@@ -183,7 +183,14 @@ class PlayerActivity : AppCompatActivity() {
         val cookieManager = CookieHandler.getDefault() as? CookieManager ?: return emptyMap()
         val cookies = cookieManager.cookieStore.cookies
         if (cookies.isEmpty()) return emptyMap()
-        val cookieHeader = cookies.joinToString("; ") { "${it.name}=${it.value}" }
+        // Si por algún motivo quedaron dos cookies con el mismo nombre
+        // (ej. una vieja sin purgar conviviendo con la nueva tras un
+        // re-login), no concatenar las dos: "session=A; session=B" en
+        // el header puede hacer que el server lea la que no corresponde.
+        // Nos quedamos con la última de cada nombre.
+        val porNombre = LinkedHashMap<String, String>()
+        cookies.forEach { porNombre[it.name] = it.value }
+        val cookieHeader = porNombre.entries.joinToString("; ") { "${it.key}=${it.value}" }
         return mapOf("Cookie" to cookieHeader)
     }
 
