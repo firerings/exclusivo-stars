@@ -6,6 +6,7 @@ import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.view.WindowManager
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.widget.TextView
@@ -82,6 +83,14 @@ class PlayerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        // Sin esto, Android reserva una franja para el recorte de la
+        // cámara (notch/punch-hole) en landscape y corre todo el
+        // contenido hacia el otro lado -- de ahí el video desplazado
+        // con una franja vacía. LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        // permite dibujar debajo del cutout siempre, así el video usa
+        // el 100% del ancho y la cámara queda flotando sobre la imagen.
+        window.attributes.layoutInDisplayCutoutMode =
+            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         setContentView(R.layout.activity_player)
         // window.insetsController (dentro de ocultarBarrasSistema) exige
         // que la ventana ya tenga su DecorView armada -- eso recién pasa
