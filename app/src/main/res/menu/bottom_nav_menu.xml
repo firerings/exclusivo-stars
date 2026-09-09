@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_peliculas"
+        android:icon="@drawable/ic_tab_peliculas"
+        android:title="@string/nav_peliculas" />
+    <item
+        android:id="@+id/nav_series"
+        android:icon="@drawable/ic_tab_series"
+        android:title="@string/nav_series" />
+    <item
+        android:id="@+id/nav_reels"
+        android:icon="@drawable/ic_tab_reels"
+        android:title="@string/nav_reels" />
+    <item
+        android:id="@+id/nav_musica"
+        android:icon="@drawable/ic_tab_musica"
+        android:title="@string/nav_musica" />
+</menu>

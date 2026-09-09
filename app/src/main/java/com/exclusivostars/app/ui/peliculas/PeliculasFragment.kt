@@ -1,23 +1,23 @@
 package com.exclusivostars.app.ui.peliculas
 
-import android.app.Activity
-import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
-import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.exclusivostars.app.R
+import com.exclusivostars.app.model.Pelicula
 import com.exclusivostars.app.network.PeliculasApi
-import com.exclusivostars.app.ui.auth.MainActivity
 
-class PeliculasActivity : Activity() {
+class PeliculasFragment : Fragment(R.layout.fragment_peliculas) {
 
     private val main = Handler(Looper.getMainLooper())
     private lateinit var adapter: PeliculasAdapter
@@ -28,31 +28,25 @@ class PeliculasActivity : Activity() {
     private lateinit var errorMessage: TextView
     private lateinit var emptyState: TextView
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_peliculas)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-        recycler = findViewById(R.id.recycler_peliculas)
-        progress = findViewById(R.id.progress)
-        errorState = findViewById(R.id.error_state)
-        errorMessage = findViewById(R.id.error_message)
-        emptyState = findViewById(R.id.empty_state)
+        recycler = view.findViewById(R.id.recycler_peliculas)
+        progress = view.findViewById(R.id.progress)
+        errorState = view.findViewById(R.id.error_state)
+        errorMessage = view.findViewById(R.id.error_message)
+        emptyState = view.findViewById(R.id.empty_state)
 
         adapter = PeliculasAdapter { pelicula ->
             // TODO: abrir ficha de la película cuando exista esa pantalla.
             // Por ahora, confirmación mínima de que el click y los datos
             // reales llegaron bien de punta a punta.
-            Toast.makeText(this, pelicula.titulo, Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), pelicula.titulo, Toast.LENGTH_SHORT).show()
         }
-        recycler.layoutManager = GridLayoutManager(this, 3)
+        recycler.layoutManager = GridLayoutManager(requireContext(), 3)
         recycler.adapter = adapter
 
-        findViewById<ImageButton>(R.id.logout_button).setOnClickListener {
-            MainActivity.cookieManager.cookieStore.removeAll()
-            startActivity(Intent(this, MainActivity::class.java))
-            finish()
-        }
-        findViewById<Button>(R.id.retry_button).setOnClickListener { cargar() }
+        view.findViewById<Button>(R.id.retry_button).setOnClickListener { cargar() }
 
         cargar()
     }
@@ -62,6 +56,7 @@ class PeliculasActivity : Activity() {
         Thread {
             val result = PeliculasApi.listar()
             main.post {
+                if (!isAdded) return@post // el fragment pudo haberse destruido mientras cargaba
                 when (result) {
                     is PeliculasApi.Result.Ok -> mostrarResultado(result.peliculas)
                     is PeliculasApi.Result.Error -> mostrarError(result.mensaje)
@@ -77,7 +72,7 @@ class PeliculasActivity : Activity() {
         emptyState.visibility = View.GONE
     }
 
-    private fun mostrarResultado(peliculas: List<com.exclusivostars.app.model.Pelicula>) {
+    private fun mostrarResultado(peliculas: List<Pelicula>) {
         progress.visibility = View.GONE
         errorState.visibility = View.GONE
 

@@ -27,4 +27,9 @@ dependencies {
     // HttpURLConnection sería mucho peor para una grilla con muchas
     // imágenes cargando/reciclándose en simultáneo.
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    // BottomNavigationView + ripple/elevation/estados ya resueltos para
+    // la navegación entre secciones (Películas/Series/Reels/Música) —
+    // reinventar esto a mano no suma nada, es el widget estándar para
+    // este patrón de navegación en Android.
+    implementation("com.google.android.material:material:1.12.0")
 }
