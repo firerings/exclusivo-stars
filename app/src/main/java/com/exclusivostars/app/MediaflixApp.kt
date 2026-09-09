@@ -17,8 +17,8 @@ import java.net.CookiePolicy
  * del ícono, Android recrea directamente la Activity que estaba en
  * pantalla (HomeActivity, la ficha de una película, etc.) sin volver
  * a pasar por MainActivity — dejando CookieHandler.getDefault() en
- * null y todo /api/* respondiendo 401 "no autenticado" aunque el
- * login siga siendo válido en el servidor.
+ * null y todas las rutas de la API responderían 401 "no autenticado"
+ * aunque el login siga siendo válido en el servidor.
  */
 class MediaflixApp : Application() {
 
