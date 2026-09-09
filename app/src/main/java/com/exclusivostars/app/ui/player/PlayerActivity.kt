@@ -22,7 +22,7 @@ import androidx.media3.ui.PlayerView
 import com.exclusivostars.app.R
 import com.exclusivostars.app.model.PeliculaDetalle
 import java.net.CookieHandler
-import java.net.URI
+import java.net.CookieManager
 
 /**
  * Reproductor standalone (pantalla completa, orientación horizontal
@@ -160,14 +160,24 @@ class PlayerActivity : AppCompatActivity() {
      * MainActivity), formateada como request header para
      * DefaultHttpDataSource.Factory.setDefaultRequestProperties(). Mismo
      * mecanismo que HttpURLConnection resuelve solo para Glide/ApiClient;
-     * Media3 no lo hace, así que hay que armarlo a mano. Devuelve un mapa
-     * vacío si por algún motivo no hay cookie (el request sigue, y el
-     * backend lo va a rechazar igual que si no hubiera sesión — no hace
-     * falta chequearlo antes acá). */
+     * Media3 no lo hace, así que hay que armarlo a mano.
+     *
+     * No usa CookieHandler.get(uri, ...) (el matching por dominio/path
+     * de CookieManager) porque ese matching fallaba contra la URL real
+     * del video (302 a /login pese a haber sesión — confirmado en logs
+     * del server) y no valía la pena perseguir la causa exacta. La app
+     * solo habla con un server (Config.BASE_URL), así que no hay
+     * ambigüedad de dominio posible: se vuelca el cookieStore entero
+     * sin pedirle nada a CookieManager.
+     *
+     * El parámetro url queda sin usar a propósito (mismo mecanismo para
+     * cualquier URL de este server, video o subtítulos). */
+    @Suppress("UNUSED_PARAMETER")
     private fun cookieHeadersPara(url: String): Map<String, String> {
-        val cookieHandler = CookieHandler.getDefault() ?: return emptyMap()
-        val cookies = cookieHandler.get(URI.create(url), emptyMap<String, List<String>>())
-        val cookieHeader = cookies["Cookie"]?.joinToString("; ") ?: return emptyMap()
+        val cookieManager = CookieHandler.getDefault() as? CookieManager ?: return emptyMap()
+        val cookies = cookieManager.cookieStore.cookies
+        if (cookies.isEmpty()) return emptyMap()
+        val cookieHeader = cookies.joinToString("; ") { "${it.name}=${it.value}" }
         return mapOf("Cookie" to cookieHeader)
     }
 
