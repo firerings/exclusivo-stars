@@ -6,6 +6,7 @@ import android.widget.ImageButton
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import com.exclusivostars.app.MediaflixApp
 import com.exclusivostars.app.R
 import com.exclusivostars.app.ui.auth.MainActivity
 import com.exclusivostars.app.ui.common.ComingSoonFragment
@@ -29,7 +30,7 @@ class HomeActivity : AppCompatActivity() {
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
 
         findViewById<ImageButton>(R.id.logout_button).setOnClickListener {
-            MainActivity.cookieManager.cookieStore.removeAll()
+            MediaflixApp.cookieManager.cookieStore.removeAll()
             startActivity(Intent(this, MainActivity::class.java))
             finish()
         }

@@ -18,9 +18,6 @@ import android.widget.TextView
 import com.exclusivostars.app.R
 import com.exclusivostars.app.network.AuthApi
 import com.exclusivostars.app.ui.home.HomeActivity
-import java.net.CookieHandler
-import java.net.CookieManager
-import java.net.CookiePolicy
 
 /** Qué formulario está activo en la pantalla de tabs. */
 private enum class Tab { LOGIN, REGISTER }
@@ -29,17 +26,6 @@ class MainActivity : Activity() {
 
     private val main = Handler(Looper.getMainLooper())
     private var activeTab = Tab.LOGIN
-
-    companion object {
-        // Una sola CookieManager para toda la app: guarda la cookie de
-        // sesión que devuelve Flask y la reusa en el resto de pantallas
-        // mientras dure la sesión.
-        val cookieManager: CookieManager by lazy {
-            CookieManager(null, CookiePolicy.ACCEPT_ALL).also {
-                CookieHandler.setDefault(it)
-            }
-        }
-    }
 
     private lateinit var tabLogin: TextView
     private lateinit var tabRegister: TextView
@@ -53,7 +39,6 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        cookieManager // fuerza la inicialización (y el setDefault) apenas arranca la pantalla
 
         val logo = findViewById<ImageView>(R.id.logo_star)
         val brand = findViewById<TextView>(R.id.brand_name)
