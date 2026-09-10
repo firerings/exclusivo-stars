@@ -7,7 +7,8 @@
     android:background="@color/background">
 
     <!-- Barra superior compartida por todas las secciones: logo, título
-         de la sección activa, y logout. No se repite por pestaña. -->
+         de la sección activa, buscador y avatar de cuenta. No se repite
+         por pestaña. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -35,14 +36,28 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
+        <!-- Mismo par que .inicio-nav-derecha en la web: buscador + perfil. -->
         <ImageButton
-            android:id="@+id/logout_button"
+            android:id="@+id/search_button"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/logout"
-            android:src="@android:drawable/ic_lock_power_off"
-            app:tint="@color/text_secondary" />
+            android:contentDescription="@string/buscar"
+            android:src="@drawable/ic_search" />
+
+        <!-- Avatar con la inicial del usuario (mismo criterio que
+             .perfil-avatar en la web) — toca para ver cuenta/logout.
+             Arranca sin texto/click hasta que SessionApi.me() responda. -->
+        <TextView
+            android:id="@+id/avatar_button"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/avatar_background"
+            android:gravity="center"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <FrameLayout

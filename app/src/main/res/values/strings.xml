@@ -40,4 +40,11 @@
     <string name="aviso_directo_sin_audio">Reproducción directa · esta película todavía no se procesó para calidad adaptativa.</string>
     <string name="error_cargar_pelicula">No se pudo cargar la película.</string>
     <string name="pantalla_completa">Pantalla completa</string>
+
+    <!-- Header: buscador + perfil -->
+    <string name="buscar">Buscar</string>
+    <string name="buscar_hint">Buscar contenido…</string>
+    <string name="buscar_vacio">Sin resultados.</string>
+    <string name="buscar_error">No se pudo buscar. Probá de nuevo.</string>
+    <string name="cuenta">Cuenta</string>
 </resources>

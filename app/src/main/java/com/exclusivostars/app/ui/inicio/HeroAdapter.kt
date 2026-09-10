@@ -3,6 +3,7 @@ package com.exclusivostars.app.ui.inicio
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -61,7 +62,24 @@ class HeroAdapter(
             holder.titulo.text = pelicula.titulo
         }
 
+        // Meta (año · duración · Película), mismo orden que #hero-meta en
+        // la web — "Película" siempre presente, año/duración solo si hay dato.
+        val partesMeta = buildList {
+            pelicula.anio?.let { add(it) }
+            pelicula.duracion?.let { add(it) }
+            add("Película")
+        }
+        holder.meta.text = partesMeta.joinToString(" · ")
+
+        holder.sinopsis.text = pelicula.sinopsis
+            ?: "Descubre esta película de tu biblioteca en una experiencia de streaming."
+
+        // Reproducir y + Mi lista apuntan los dos a la ficha de la
+        // película — mismo criterio que la web, donde "+ Mi lista"
+        // todavía no es una lista real, solo otro link a hero.url.
         holder.itemView.setOnClickListener { onClick(pelicula) }
+        holder.botonReproducir.setOnClickListener { onClick(pelicula) }
+        holder.botonMiLista.setOnClickListener { onClick(pelicula) }
     }
 
     override fun getItemCount(): Int = items.size
@@ -70,5 +88,9 @@ class HeroAdapter(
         val fondo: ImageView = view.findViewById(R.id.fondo)
         val titulo: TextView = view.findViewById(R.id.titulo)
         val logo: ImageView = view.findViewById(R.id.logo)
+        val meta: TextView = view.findViewById(R.id.meta)
+        val sinopsis: TextView = view.findViewById(R.id.sinopsis)
+        val botonReproducir: Button = view.findViewById(R.id.boton_reproducir)
+        val botonMiLista: Button = view.findViewById(R.id.boton_mi_lista)
     }
 }

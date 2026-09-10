@@ -1,0 +1,725 @@
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -31,6 +31,9 @@
+             android:name=".ui.pelicula.PeliculaDetalleActivity"
+             android:exported="false" />
+         <activity
++            android:name=".ui.buscar.BuscarActivity"
++            android:exported="false" />
++        <activity
+             android:name=".ui.player.PlayerActivity"
+             android:exported="false"
+             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+--- a/app/src/main/java/com/exclusivostars/app/ui/home/HomeActivity.kt
++++ b/app/src/main/java/com/exclusivostars/app/ui/home/HomeActivity.kt
+@@ -2,13 +2,19 @@
+ 
+ import android.content.Intent
+ import android.os.Bundle
++import android.os.Handler
++import android.os.Looper
++import android.widget.Button
+ import android.widget.ImageButton
+ import android.widget.TextView
+ import androidx.appcompat.app.AppCompatActivity
++import androidx.appcompat.app.AlertDialog
+ import androidx.fragment.app.Fragment
+ import com.exclusivostars.app.MediaflixApp
+ import com.exclusivostars.app.R
++import com.exclusivostars.app.network.SessionApi
+ import com.exclusivostars.app.ui.auth.MainActivity
++import com.exclusivostars.app.ui.buscar.BuscarActivity
+ import com.exclusivostars.app.ui.common.ComingSoonFragment
+ import com.exclusivostars.app.ui.inicio.InicioFragment
+ import com.exclusivostars.app.ui.peliculas.PeliculasFragment
+@@ -16,26 +22,32 @@
+ 
+ /**
+  * Punto de entrada real después del login/registro. Una sola barra
+- * superior (logo + título de sección + logout) y un bottom nav que
+- * cambia qué Fragment se ve en fragment_container — nada de Activities
+- * sueltas por sección, así el logout y el header no se repiten ni hay
+- * que reconstruirlos en cada pantalla nueva.
++ * superior (logo + título de sección + buscador + avatar) y un bottom
++ * nav que cambia qué Fragment se ve en fragment_container — nada de
++ * Activities sueltas por sección, así el header no se repite ni hay
++ * que reconstruirlo en cada pantalla nueva.
+  */
+ class HomeActivity : AppCompatActivity() {
+ 
++    private val main = Handler(Looper.getMainLooper())
++    private var nombreCuenta: String = ""
++    private var emailCuenta: String = ""
++
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+         setContentView(R.layout.activity_home)
+ 
+         val sectionTitle = findViewById<TextView>(R.id.section_title)
+         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav)
++        val avatarButton = findViewById<TextView>(R.id.avatar_button)
+ 
+-        findViewById<ImageButton>(R.id.logout_button).setOnClickListener {
+-            MediaflixApp.cookieManager.cookieStore.removeAll()
+-            startActivity(Intent(this, MainActivity::class.java))
+-            finish()
++        findViewById<ImageButton>(R.id.search_button).setOnClickListener {
++            startActivity(Intent(this, BuscarActivity::class.java))
+         }
+ 
++        avatarButton.setOnClickListener { mostrarDialogoCuenta() }
++        cargarCuenta(avatarButton)
++
+         bottomNav.setOnItemSelectedListener { item ->
+             val (fragment, title) = when (item.itemId) {
+                 R.id.nav_inicio -> InicioFragment() to getString(R.string.nav_inicio)
+@@ -60,4 +72,45 @@
+             .replace(R.id.fragment_container, fragment)
+             .commit()
+     }
++
++    /** GET /api/me — la sesión vive en la cookie, no en un objeto de
++     * usuario guardado del lado de la app, así que hay que pedirla
++     * para saber qué inicial/nombre pintar en el avatar (mismo
++     * criterio que _perfil_menu.html en la web). */
++    private fun cargarCuenta(avatarButton: TextView) {
++        Thread {
++            val result = SessionApi.me()
++            main.post {
++                if (isFinishing) return@post
++                if (result is SessionApi.Result.Ok) {
++                    nombreCuenta = result.nombre
++                    emailCuenta = result.email
++                    val inicial = (result.nombre.ifBlank { result.email }).take(1).uppercase()
++                    avatarButton.text = inicial
++                }
++                // Si falla (sin red, 401, etc.) el avatar queda sin
++                // inicial pero sigue abriendo el diálogo — mejor eso
++                // que trabar el header por un dato que no es crítico.
++            }
++        }.start()
++    }
++
++    private fun mostrarDialogoCuenta() {
++        val vista = layoutInflater.inflate(R.layout.dialog_perfil, null)
++        vista.findViewById<TextView>(R.id.perfil_nombre).text = nombreCuenta.ifBlank { getString(R.string.cuenta) }
++        vista.findViewById<TextView>(R.id.perfil_email).text = emailCuenta
++
++        val dialogo = AlertDialog.Builder(this)
++            .setView(vista)
++            .create()
++
++        vista.findViewById<Button>(R.id.perfil_logout).setOnClickListener {
++            dialogo.dismiss()
++            MediaflixApp.cookieManager.cookieStore.removeAll()
++            startActivity(Intent(this, MainActivity::class.java))
++            finish()
++        }
++
++        dialogo.show()
++    }
+ }
+--- a/app/src/main/java/com/exclusivostars/app/ui/inicio/HeroAdapter.kt
++++ b/app/src/main/java/com/exclusivostars/app/ui/inicio/HeroAdapter.kt
+@@ -3,6 +3,7 @@
+ import android.view.LayoutInflater
+ import android.view.View
+ import android.view.ViewGroup
++import android.widget.Button
+ import android.widget.ImageView
+ import android.widget.TextView
+ import androidx.recyclerview.widget.RecyclerView
+@@ -61,7 +62,24 @@
+             holder.titulo.text = pelicula.titulo
+         }
+ 
++        // Meta (año · duración · Película), mismo orden que #hero-meta en
++        // la web — "Película" siempre presente, año/duración solo si hay dato.
++        val partesMeta = buildList {
++            pelicula.anio?.let { add(it) }
++            pelicula.duracion?.let { add(it) }
++            add("Película")
++        }
++        holder.meta.text = partesMeta.joinToString(" · ")
++
++        holder.sinopsis.text = pelicula.sinopsis
++            ?: "Descubre esta película de tu biblioteca en una experiencia de streaming."
++
++        // Reproducir y + Mi lista apuntan los dos a la ficha de la
++        // película — mismo criterio que la web, donde "+ Mi lista"
++        // todavía no es una lista real, solo otro link a hero.url.
+         holder.itemView.setOnClickListener { onClick(pelicula) }
++        holder.botonReproducir.setOnClickListener { onClick(pelicula) }
++        holder.botonMiLista.setOnClickListener { onClick(pelicula) }
+     }
+ 
+     override fun getItemCount(): Int = items.size
+@@ -70,5 +88,9 @@
+         val fondo: ImageView = view.findViewById(R.id.fondo)
+         val titulo: TextView = view.findViewById(R.id.titulo)
+         val logo: ImageView = view.findViewById(R.id.logo)
++        val meta: TextView = view.findViewById(R.id.meta)
++        val sinopsis: TextView = view.findViewById(R.id.sinopsis)
++        val botonReproducir: Button = view.findViewById(R.id.boton_reproducir)
++        val botonMiLista: Button = view.findViewById(R.id.boton_mi_lista)
+     }
+ }
+--- a/app/src/main/res/layout/activity_home.xml
++++ b/app/src/main/res/layout/activity_home.xml
+@@ -7,7 +7,8 @@
+     android:background="@color/background">
+ 
+     <!-- Barra superior compartida por todas las secciones: logo, título
+-         de la sección activa, y logout. No se repite por pestaña. -->
++         de la sección activa, buscador y avatar de cuenta. No se repite
++         por pestaña. -->
+     <LinearLayout
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+@@ -35,14 +36,28 @@
+             android:textSize="18sp"
+             android:textStyle="bold" />
+ 
++        <!-- Mismo par que .inicio-nav-derecha en la web: buscador + perfil. -->
+         <ImageButton
+-            android:id="@+id/logout_button"
++            android:id="@+id/search_button"
+             android:layout_width="40dp"
+             android:layout_height="40dp"
+             android:background="?android:attr/selectableItemBackgroundBorderless"
+-            android:contentDescription="@string/logout"
+-            android:src="@android:drawable/ic_lock_power_off"
+-            app:tint="@color/text_secondary" />
++            android:contentDescription="@string/buscar"
++            android:src="@drawable/ic_search" />
++
++        <!-- Avatar con la inicial del usuario (mismo criterio que
++             .perfil-avatar en la web) — toca para ver cuenta/logout.
++             Arranca sin texto/click hasta que SessionApi.me() responda. -->
++        <TextView
++            android:id="@+id/avatar_button"
++            android:layout_width="34dp"
++            android:layout_height="34dp"
++            android:layout_marginStart="4dp"
++            android:background="@drawable/avatar_background"
++            android:gravity="center"
++            android:textColor="@color/text_primary"
++            android:textSize="15sp"
++            android:textStyle="bold" />
+     </LinearLayout>
+ 
+     <FrameLayout
+--- a/app/src/main/res/layout/item_hero.xml
++++ b/app/src/main/res/layout/item_hero.xml
+@@ -17,33 +17,108 @@
+         android:layout_height="match_parent"
+         android:background="@drawable/hero_degradado" />
+ 
+-    <!-- Logo transparente de la película (logo.png), mismo criterio que -->
+-    <!-- el hero de la web: si existe, reemplaza al título en texto plano. -->
+-    <ImageView
+-        android:id="@+id/logo"
+-        android:layout_width="200dp"
+-        android:layout_height="90dp"
+-        android:layout_gravity="bottom|start"
+-        android:layout_margin="16dp"
+-        android:scaleType="fitStart"
+-        android:adjustViewBounds="true"
+-        android:visibility="gone"
+-        android:contentDescription="@null" />
+-
+-    <TextView
+-        android:id="@+id/titulo"
+-        android:layout_width="wrap_content"
++    <!-- Mismo contenido que .inicio-hero-contenido en la web: logo/título,
++         meta (año · duración · Película), sinopsis y los botones
++         Reproducir / + Mi lista, todo anclado abajo. -->
++    <LinearLayout
++        android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+         android:layout_gravity="bottom|start"
+         android:layout_margin="16dp"
+-        android:maxLines="2"
+-        android:ellipsize="end"
+-        android:shadowColor="#CC000000"
+-        android:shadowDx="0"
+-        android:shadowDy="1"
+-        android:shadowRadius="6"
+-        android:textColor="@color/text_primary"
+-        android:textSize="22sp"
+-        android:textStyle="bold" />
++        android:orientation="vertical">
++
++        <!-- Logo transparente de la película (logo.png), mismo criterio que -->
++        <!-- el hero de la web: si existe, reemplaza al título en texto plano. -->
++        <ImageView
++            android:id="@+id/logo"
++            android:layout_width="200dp"
++            android:layout_height="90dp"
++            android:layout_gravity="start"
++            android:scaleType="fitStart"
++            android:adjustViewBounds="true"
++            android:visibility="gone"
++            android:contentDescription="@null" />
++
++        <TextView
++            android:id="@+id/titulo"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:maxLines="2"
++            android:ellipsize="end"
++            android:shadowColor="#CC000000"
++            android:shadowDx="0"
++            android:shadowDy="1"
++            android:shadowRadius="6"
++            android:textColor="@color/text_primary"
++            android:textSize="22sp"
++            android:textStyle="bold" />
++
++        <TextView
++            android:id="@+id/meta"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:shadowColor="#CC000000"
++            android:shadowDx="0"
++            android:shadowDy="1"
++            android:shadowRadius="6"
++            android:textColor="@color/text_secondary"
++            android:textSize="13sp" />
++
++        <TextView
++            android:id="@+id/sinopsis"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="8dp"
++            android:maxWidth="320dp"
++            android:maxLines="2"
++            android:ellipsize="end"
++            android:shadowColor="#CC000000"
++            android:shadowDx="0"
++            android:shadowDy="1"
++            android:shadowRadius="6"
++            android:textColor="@color/text_primary"
++            android:textSize="13sp" />
++
++        <LinearLayout
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_marginTop="14dp"
++            android:orientation="horizontal">
++
++            <Button
++                android:id="@+id/boton_reproducir"
++                android:layout_width="wrap_content"
++                android:layout_height="42dp"
++                android:paddingStart="20dp"
++                android:paddingEnd="20dp"
++                android:minWidth="0dp"
++                android:minHeight="0dp"
++                android:text="▶ Reproducir"
++                android:textAllCaps="false"
++                android:textSize="14sp"
++                android:textStyle="bold"
++                android:textColor="@color/background"
++                android:background="@drawable/hero_btn_blanco_background" />
++
++            <Button
++                android:id="@+id/boton_mi_lista"
++                android:layout_width="wrap_content"
++                android:layout_height="42dp"
++                android:layout_marginStart="10dp"
++                android:paddingStart="20dp"
++                android:paddingEnd="20dp"
++                android:minWidth="0dp"
++                android:minHeight="0dp"
++                android:text="＋ Mi lista"
++                android:textAllCaps="false"
++                android:textSize="14sp"
++                android:textStyle="bold"
++                android:textColor="@color/text_primary"
++                android:background="@drawable/hero_btn_glass_background" />
++
++        </LinearLayout>
++
++    </LinearLayout>
+ 
+ </FrameLayout>
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -40,4 +40,11 @@
+     <string name="aviso_directo_sin_audio">Reproducción directa · esta película todavía no se procesó para calidad adaptativa.</string>
+     <string name="error_cargar_pelicula">No se pudo cargar la película.</string>
+     <string name="pantalla_completa">Pantalla completa</string>
++
++    <!-- Header: buscador + perfil -->
++    <string name="buscar">Buscar</string>
++    <string name="buscar_hint">Buscar contenido…</string>
++    <string name="buscar_vacio">Sin resultados.</string>
++    <string name="buscar_error">No se pudo buscar. Probá de nuevo.</string>
++    <string name="cuenta">Cuenta</string>
+ </resources>
+--- /dev/null
++++ b/app/src/main/java/com/exclusivostars/app/network/SessionApi.kt
+@@ -0,0 +1,41 @@
++package com.exclusivostars.app.network
++
++/**
++ * Contrato esperado del backend (api_me() en auth/routes.py, mismo
++ * patrón que api_login/api_register pero GET y sin body):
++ *
++ * GET /api/me
++ *   200: {"ok": true, "user": {"name": str, "email": str}}
++ *   401: si no hay sesión (before_app_request de auth/routes.py ya lo
++ *        cubre para todo /api/*, igual que en PeliculasApi/SeriesApi).
++ *
++ * Para qué sirve: la sesión vive en la cookie (PersistentCookieStore),
++ * no en un objeto de usuario guardado del lado de la app — así que
++ * HomeActivity necesita pedir este endpoint para saber a quién
++ * pintarle el avatar/nombre en el header, sin repetir el login.
++ */
++object SessionApi {
++
++    sealed class Result {
++        data class Ok(val nombre: String, val email: String) : Result()
++        data class Error(val mensaje: String) : Result()
++    }
++
++    /** Llamar siempre desde background (Thread/executor), nunca desde el hilo principal. */
++    fun me(): Result {
++        val response = ApiClient.getJson("/api/me")
++
++        response.networkError?.let { return Result.Error(it) }
++        val json = response.body ?: return Result.Error("El servidor respondió vacío (código ${response.code}).")
++
++        if (!json.optBoolean("ok", false)) {
++            return Result.Error(json.optString("error", "No se pudo cargar la cuenta."))
++        }
++
++        val user = json.optJSONObject("user") ?: return Result.Error("Respuesta incompleta del servidor.")
++        return Result.Ok(
++            nombre = user.optString("name", ""),
++            email = user.optString("email", ""),
++        )
++    }
++}
+--- /dev/null
++++ b/app/src/main/java/com/exclusivostars/app/ui/buscar/BuscarActivity.kt
+@@ -0,0 +1,136 @@
++package com.exclusivostars.app.ui.buscar
++
++import android.os.Bundle
++import android.os.Handler
++import android.os.Looper
++import android.text.Editable
++import android.text.TextWatcher
++import android.view.View
++import android.widget.EditText
++import android.widget.ImageButton
++import android.widget.ProgressBar
++import android.widget.TextView
++import androidx.appcompat.app.AppCompatActivity
++import androidx.recyclerview.widget.GridLayoutManager
++import androidx.recyclerview.widget.RecyclerView
++import com.exclusivostars.app.R
++import com.exclusivostars.app.model.Pelicula
++import com.exclusivostars.app.model.Serie
++import com.exclusivostars.app.network.PeliculasApi
++import com.exclusivostars.app.network.SeriesApi
++import com.exclusivostars.app.ui.inicio.FilaAdapter
++import com.exclusivostars.app.ui.inicio.FilaItem
++import com.exclusivostars.app.ui.pelicula.PeliculaDetalleActivity
++
++/**
++ * Búsqueda por título sobre películas y series — mismo alcance que
++ * Inicio (ver InicioFragment: Reels y Música todavía no tienen /api
++ * propia). A diferencia de /buscar en la web (que cruza personas,
++ * reels y canciones con varias secciones de resultados), acá se filtra
++ * en el cliente sobre el catálogo que ya devuelven PeliculasApi/
++ * SeriesApi — no hace falta un endpoint de búsqueda propio para esto,
++ * y evita duplicar la lógica multi-tipo de app.buscar() en Kotlin.
++ *
++ * Reusa FilaAdapter/FilaItem (ya genéricos por diseño, ver
++ * InicioFragment) en vez de un adapter nuevo — mismo criterio de
++ * "una sola clase para pintar una tarjeta", ahora en grilla en vez de
++ * fila horizontal.
++ */
++class BuscarActivity : AppCompatActivity() {
++
++    private val main = Handler(Looper.getMainLooper())
++    private val adapter = FilaAdapter()
++
++    private var peliculas: List<Pelicula> = emptyList()
++    private var series: List<Serie> = emptyList()
++    private var catalogoListo = false
++
++    private lateinit var recycler: RecyclerView
++    private lateinit var progress: ProgressBar
++    private lateinit var emptyState: TextView
++    private lateinit var campoBuscar: EditText
++
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        setContentView(R.layout.activity_buscar)
++
++        recycler = findViewById(R.id.recycler_resultados)
++        progress = findViewById(R.id.progress)
++        emptyState = findViewById(R.id.empty_state)
++        campoBuscar = findViewById(R.id.campo_buscar)
++
++        recycler.layoutManager = GridLayoutManager(this, 3)
++        recycler.adapter = adapter
++
++        findViewById<ImageButton>(R.id.back_button).setOnClickListener { finish() }
++
++        campoBuscar.addTextChangedListener(object : TextWatcher {
++            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
++            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
++            override fun afterTextChanged(s: Editable?) = filtrar(s?.toString().orEmpty())
++        })
++
++        cargarCatalogo()
++    }
++
++    private fun cargarCatalogo() {
++        progress.visibility = View.VISIBLE
++        Thread {
++            val resultPeliculas = PeliculasApi.listar()
++            val resultSeries = SeriesApi.listar()
++            main.post {
++                if (isFinishing) return@post
++                progress.visibility = View.GONE
++                peliculas = (resultPeliculas as? PeliculasApi.Result.Ok)?.peliculas.orEmpty()
++                series = (resultSeries as? SeriesApi.Result.Ok)?.series.orEmpty()
++                catalogoListo = true
++                filtrar(campoBuscar.text.toString())
++            }
++        }.start()
++    }
++
++    /** Mismo mínimo de 2 caracteres que /buscar en la web — antes de
++     * eso no muestra ni "sin resultados", solo la grilla vacía. */
++    private fun filtrar(query: String) {
++        if (!catalogoListo) return
++        val q = query.trim().lowercase()
++        if (q.length < 2) {
++            adapter.submitList(emptyList())
++            recycler.visibility = View.GONE
++            emptyState.visibility = View.GONE
++            return
++        }
++
++        val items = buildList {
++            peliculas.filter { it.titulo.lowercase().contains(q) }.forEach { pelicula ->
++                add(FilaItem(
++                    id = pelicula.nombre,
++                    titulo = pelicula.titulo,
++                    subtitulo = pelicula.anio,
++                    posterUrl = pelicula.posterUrl,
++                    onClick = { startActivity(PeliculaDetalleActivity.crearIntent(this@BuscarActivity, pelicula.nombre)) },
++                ))
++            }
++            series.filter { it.titulo.lowercase().contains(q) }.forEach { serie ->
++                add(FilaItem(
++                    id = serie.slug,
++                    titulo = serie.titulo,
++                    subtitulo = serie.anio,
++                    posterUrl = serie.posterUrl,
++                    // Todavía no hay SerieDetalleActivity — mismo criterio
++                    // que la fila de Series en InicioFragment.
++                    onClick = {},
++                ))
++            }
++        }
++
++        if (items.isEmpty()) {
++            recycler.visibility = View.GONE
++            emptyState.visibility = View.VISIBLE
++        } else {
++            adapter.submitList(items)
++            emptyState.visibility = View.GONE
++            recycler.visibility = View.VISIBLE
++        }
++    }
++}
+--- /dev/null
++++ b/app/src/main/res/drawable/avatar_background.xml
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Mismo círculo con inicial que .perfil-avatar en la web
++     (perfil-menu.js / _perfil_menu.html). -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android"
++    android:shape="oval">
++    <solid android:color="@color/star_red" />
++</shape>
+--- /dev/null
++++ b/app/src/main/res/drawable/hero_btn_blanco_background.xml
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Mismo criterio que .inicio-btn-blanco en inicio.css (web): blanco
++     sólido, texto oscuro — botón "Reproducir" del hero. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <solid android:color="@color/text_primary" />
++    <corners android:radius="8dp" />
++</shape>
+--- /dev/null
++++ b/app/src/main/res/drawable/hero_btn_glass_background.xml
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Mismo criterio que .inicio-btn-glass en inicio.css (web): blanco
++     translúcido con borde tenue — botón "+ Mi lista" del hero. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <solid android:color="#33FFFFFF" />
++    <corners android:radius="8dp" />
++    <stroke android:width="1dp" android:color="#66FFFFFF" />
++</shape>
+--- /dev/null
++++ b/app/src/main/res/drawable/ic_search.xml
+@@ -0,0 +1,12 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Mismo path que el ícono de lupa de #buscador-inicio en index.html (web). -->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24"
++    android:tint="#FFFFFF">
++    <path
++        android:fillColor="#FF000000"
++        android:pathData="M15.5,14h-.79l-.28-.27a6.51,6.51 0,0 0,1.48 -5.34c-0.47,-2.78 -2.79,-5 -5.59,-5.34a6.505,6.505 0,0 0,-7.27 7.27c0.34,2.8 2.56,5.12 5.34,5.59a6.51,6.51 0,0 0,5.34 -1.48l0.27,0.28v0.79l4.25,4.25a1.06,1.06 0,0 0,1.5 -1.5L15.5,14zM9.5,14C7.01,14 5,11.99 5,9.5S7.01,5 9.5,5 14,7.01 14,9.5 11.99,14 9.5,14z" />
++</vector>
+--- /dev/null
++++ b/app/src/main/res/layout/activity_buscar.xml
+@@ -0,0 +1,87 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:orientation="vertical"
++    android:background="@color/background">
++
++    <!-- Mismo espíritu que #buscador-inicio en la web (lupa + input),
++         con back en vez de vivir dentro del header de Inicio: acá es
++         una pantalla propia, no un campo flotando sobre el hero. -->
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="horizontal"
++        android:gravity="center_vertical"
++        android:paddingStart="12dp"
++        android:paddingEnd="16dp"
++        android:paddingTop="14dp"
++        android:paddingBottom="10dp">
++
++        <ImageButton
++            android:id="@+id/back_button"
++            android:layout_width="40dp"
++            android:layout_height="40dp"
++            android:background="@drawable/back_button_background"
++            android:contentDescription="@string/volver"
++            android:src="@android:drawable/ic_menu_close_clear_cancel"
++            app:tint="@color/text_primary" />
++
++        <EditText
++            android:id="@+id/campo_buscar"
++            android:layout_width="0dp"
++            android:layout_height="44dp"
++            android:layout_weight="1"
++            android:layout_marginStart="10dp"
++            android:background="@drawable/edit_text_background"
++            android:paddingStart="16dp"
++            android:paddingEnd="16dp"
++            android:hint="@string/buscar_hint"
++            android:textColor="@color/text_primary"
++            android:textColorHint="@color/text_secondary"
++            android:textSize="15sp"
++            android:inputType="text"
++            android:imeOptions="actionSearch"
++            android:maxLines="1"
++            android:singleLine="true" />
++    </LinearLayout>
++
++    <FrameLayout
++        android:layout_width="match_parent"
++        android:layout_height="0dp"
++        android:layout_weight="1">
++
++        <androidx.recyclerview.widget.RecyclerView
++            android:id="@+id/recycler_resultados"
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:clipToPadding="false"
++            android:paddingStart="10dp"
++            android:paddingEnd="10dp"
++            android:paddingTop="6dp"
++            android:paddingBottom="20dp"
++            android:visibility="gone" />
++
++        <ProgressBar
++            android:id="@+id/progress"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_gravity="center" />
++
++        <TextView
++            android:id="@+id/empty_state"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_gravity="center"
++            android:gravity="center"
++            android:paddingStart="32dp"
++            android:paddingEnd="32dp"
++            android:text="@string/buscar_vacio"
++            android:textColor="@color/text_secondary"
++            android:textSize="14sp"
++            android:visibility="gone" />
++
++    </FrameLayout>
++
++</LinearLayout>
+--- /dev/null
++++ b/app/src/main/res/layout/dialog_perfil.xml
+@@ -0,0 +1,42 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Mismo contenido que .perfil-dropdown en _perfil_menu.html (web):
++     nombre, email y logout. Va dentro de un AlertDialog en vez de un
++     dropdown anclado — más simple y confiable en distintos tamaños de
++     pantalla que un PopupWindow posicionado a mano. -->
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:orientation="vertical"
++    android:paddingStart="24dp"
++    android:paddingEnd="24dp"
++    android:paddingTop="20dp"
++    android:paddingBottom="8dp">
++
++    <TextView
++        android:id="@+id/perfil_nombre"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:textColor="@color/text_primary"
++        android:textSize="17sp"
++        android:textStyle="bold" />
++
++    <TextView
++        android:id="@+id/perfil_email"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginTop="4dp"
++        android:textColor="@color/text_secondary"
++        android:textSize="14sp" />
++
++    <Button
++        android:id="@+id/perfil_logout"
++        android:layout_width="match_parent"
++        android:layout_height="46dp"
++        android:layout_marginTop="20dp"
++        android:layout_marginBottom="12dp"
++        android:text="@string/logout"
++        android:textAllCaps="false"
++        android:textColor="@color/text_primary"
++        android:background="@drawable/secondary_button_background" />
++
++</LinearLayout>
