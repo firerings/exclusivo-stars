@@ -107,6 +107,7 @@ class BuscarActivity : AppCompatActivity() {
                     id = pelicula.nombre,
                     titulo = pelicula.titulo,
                     subtitulo = pelicula.anio,
+                    tipo = "Película",
                     posterUrl = pelicula.posterUrl,
                     onClick = { startActivity(PeliculaDetalleActivity.crearIntent(this@BuscarActivity, pelicula.nombre)) },
                 ))
@@ -116,6 +117,7 @@ class BuscarActivity : AppCompatActivity() {
                     id = serie.slug,
                     titulo = serie.titulo,
                     subtitulo = serie.anio,
+                    tipo = "Serie",
                     posterUrl = serie.posterUrl,
                     // Todavía no hay SerieDetalleActivity — mismo criterio
                     // que la fila de Series en InicioFragment.

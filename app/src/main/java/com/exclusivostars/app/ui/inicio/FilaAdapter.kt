@@ -30,6 +30,7 @@ class FilaAdapter : RecyclerView.Adapter<FilaAdapter.VH>() {
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = items[position]
         holder.titulo.text = item.titulo
+        holder.anio.text = listOfNotNull(item.subtitulo, item.tipo).joinToString(" · ")
 
         Glide.with(holder.poster)
             .load(item.posterUrl)
@@ -46,5 +47,6 @@ class FilaAdapter : RecyclerView.Adapter<FilaAdapter.VH>() {
     class VH(view: View) : RecyclerView.ViewHolder(view) {
         val poster: ImageView = view.findViewById(R.id.poster)
         val titulo: TextView = view.findViewById(R.id.titulo)
+        val anio: TextView = view.findViewById(R.id.anio)
     }
 }

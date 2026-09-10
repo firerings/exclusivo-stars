@@ -12,6 +12,10 @@ data class FilaItem(
     val id: String,
     val titulo: String,
     val subtitulo: String?,
+    /** "Película" o "Serie" — mismo criterio que .media-card-info en la
+     * web (item.anio · Película/Serie). Queda abierto a texto libre por
+     * si una fila futura (Reels, Música) necesita otra etiqueta. */
+    val tipo: String,
     val posterUrl: String?,
     val onClick: () -> Unit,
 )
