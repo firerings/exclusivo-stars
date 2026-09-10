@@ -122,7 +122,13 @@ class InicioFragment : Fragment(R.layout.fragment_inicio) {
         progress.visibility = View.GONE
         errorState.visibility = View.GONE
 
-        val candidatasHero = peliculas.filter { it.fondoUrl != null || it.posterUrl != null }.take(6)
+        // Mismo criterio que _construir_hero en la web: con logo primero
+        // (se ven más "de catálogo destacado"), cada grupo mezclado al
+        // azar para que el orden no sea siempre el mismo.
+        val candidatas = peliculas.filter { it.fondoUrl != null || it.posterUrl != null }
+        val conLogo = candidatas.filter { it.logoUrl != null }.shuffled()
+        val sinLogo = candidatas.filter { it.logoUrl == null }.shuffled()
+        val candidatasHero = (conLogo + sinLogo).take(6)
         heroAdapter.submitList(candidatasHero)
         main.removeCallbacks(rotarHero)
         if (candidatasHero.size > 1) main.postDelayed(rotarHero, 6000)
