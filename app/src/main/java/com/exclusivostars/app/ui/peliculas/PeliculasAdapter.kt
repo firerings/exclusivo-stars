@@ -30,7 +30,7 @@ class PeliculasAdapter(
     override fun onBindViewHolder(holder: VH, position: Int) {
         val pelicula = items[position]
         holder.titulo.text = pelicula.titulo
-        holder.anio.text = pelicula.anio.orEmpty()
+        holder.anio.text = listOfNotNull(pelicula.anio, "Película").joinToString(" · ")
 
         Glide.with(holder.poster)
             .load(pelicula.posterUrl)

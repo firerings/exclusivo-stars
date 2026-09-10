@@ -8,7 +8,11 @@
     android:paddingEnd="6dp"
     android:paddingBottom="14dp">
 
-    <!-- Aspect ratio 2:3 típico de poster de película -->
+    <!-- Título/año ADENTRO de la tarjeta, como en las filas de Inicio
+         (item_fila_poster.xml) — se ve más a app de streaming que a
+         galería de archivos. La propia web usa el patrón "debajo" acá
+         (peliculas.html), pero decidimos unificar todo al de adentro,
+         que es el que se ve más profesional. Mismo ratio 2:3 de siempre. -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="200dp"
@@ -27,25 +31,48 @@
              muestra en la grilla (peliculas.html), solo hay un aviso de
              "reproducción directa" dentro de la ficha (pelicula.html).
              Ver PeliculaActivity para esa versión. -->
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/poster_card_degradado" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:orientation="vertical"
+            android:padding="9dp">
+
+            <TextView
+                android:id="@+id/titulo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:shadowColor="#B3000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="4"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/anio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:shadowColor="#B3000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="4"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+
+        </LinearLayout>
+
     </androidx.cardview.widget.CardView>
-
-    <TextView
-        android:id="@+id/titulo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:ellipsize="end"
-        android:maxLines="2"
-        android:textColor="@color/text_primary"
-        android:textSize="13sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/anio"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:textColor="@color/text_secondary"
-        android:textSize="11sp" />
 
 </LinearLayout>

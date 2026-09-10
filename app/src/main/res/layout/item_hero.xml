@@ -98,7 +98,7 @@
                 android:textAllCaps="false"
                 android:textSize="14sp"
                 android:textStyle="bold"
-                android:textColor="@color/background"
+                android:textColor="@color/text_primary"
                 android:background="@drawable/hero_btn_blanco_background" />
 
             <Button

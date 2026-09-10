@@ -20,7 +20,7 @@
             <androidx.viewpager2.widget.ViewPager2
                 android:id="@+id/hero_pager"
                 android:layout_width="match_parent"
-                android:layout_height="260dp" />
+                android:layout_height="460dp" />
 
             <TextView
                 android:id="@+id/titulo_peliculas"

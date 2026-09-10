@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Mismo criterio que .inicio-btn-blanco en inicio.css (web): blanco
-     sólido, texto oscuro — botón "Reproducir" del hero. -->
+<!-- Mismo criterio que .inicio-btn-blanco en inicio.css (web): fondo
+     rojo de marca (--accent, no blanco) con sombra tenue, texto blanco. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/text_primary" />
+    <solid android:color="@color/star_red" />
     <corners android:radius="8dp" />
 </shape>
