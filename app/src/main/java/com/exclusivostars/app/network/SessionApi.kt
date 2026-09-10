@@ -7,7 +7,7 @@ package com.exclusivostars.app.network
  * GET /api/me
  *   200: {"ok": true, "user": {"name": str, "email": str}}
  *   401: si no hay sesión (before_app_request de auth/routes.py ya lo
- *        cubre para todo /api/*, igual que en PeliculasApi/SeriesApi).
+ *        cubre para todo /api/, igual que en PeliculasApi/SeriesApi).
  *
  * Para qué sirve: la sesión vive en la cookie (PersistentCookieStore),
  * no en un objeto de usuario guardado del lado de la app — así que
