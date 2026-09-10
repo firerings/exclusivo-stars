@@ -2,7 +2,6 @@ package com.exclusivostars.app.ui.player
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -78,9 +77,17 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        // Sin esto, Android reserva una franja para el recorte de la
-        // cámara (notch/punch-hole) en landscape y corre todo el
+        // El landscape forzado ahora se declara en el Manifest
+        // (android:screenOrientation="sensorLandscape") en vez de acá
+        // en código: así el sistema arranca la animación de rotación
+        // en cuanto crea el ActivityRecord, en paralelo con el resto
+        // del arranque de la Activity, en vez de esperar a que
+        // corra esta línea dentro de onCreate() -- unos ms menos de
+        // espera antes de ver el video.
+        //
+        // Sin LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS, Android reserva una
+        // franja para el recorte de la cámara (notch/punch-hole) en
+        // landscape y corre todo el
         // contenido hacia el otro lado -- de ahí el video desplazado
         // con una franja vacía. LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         // permite dibujar debajo del cutout siempre, así el video usa
@@ -140,6 +147,12 @@ class PlayerActivity : AppCompatActivity() {
             // que siga reproduciéndose reutilizado.
             playerView.player?.removeListener(listener)
             playerView.player = null
+            // Sin esto, Android anima la transición por default (fade
+            // + un frame de la Activity de abajo quedando expuesta
+            // antes de tiempo) -- se siente como demora extra aunque
+            // el reproductor ya esté listo del otro lado.
+            @Suppress("DEPRECATION")
+            overridePendingTransition(0, 0)
         } else {
             // No se está cerrando (ej. Home): misma red de seguridad
             // de siempre, no dejar audio sonando de fondo sin UI.

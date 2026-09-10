@@ -104,7 +104,8 @@
             android:text="@string/retry"
             android:textAllCaps="false"
             android:textColor="@android:color/white"
-            android:background="@drawable/primary_button_background" />
+            android:background="@drawable/primary_button_background"
+            android:backgroundTint="@null" />
     </LinearLayout>
 
 </FrameLayout>

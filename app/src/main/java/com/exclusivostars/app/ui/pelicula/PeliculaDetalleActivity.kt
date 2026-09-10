@@ -314,6 +314,12 @@ class PeliculaDetalleActivity : AppCompatActivity() {
         playerViewInline.player?.removeListener(listenerInline)
         playerViewInline.player = null // soltar la vista, no el reproductor (sigue vivo en PlayerManager)
         fullscreenLauncher.launch(PlayerActivity.crearIntent(this, pelicula))
+        // Sin esto, Android anima la apertura por default (fade +
+        // exponer esta Activity un frame antes de tiempo) -- se
+        // siente como demora extra aunque el reproductor ya esté
+        // listo del otro lado.
+        @Suppress("DEPRECATION")
+        overridePendingTransition(0, 0)
     }
 
     private fun liberarInline() {
