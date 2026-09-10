@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Mismo criterio que .inicio-btn-glass en inicio.css (web): fondo
-     blanco casi imperceptible (#ffffff0c) y borde tenue (var(--line) =
+     blanco casi imperceptible (#ffffff0c) y borde tenue (var linea =
      rgba(255,255,255,.08)) — botón "+ Mi lista" del hero. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <solid android:color="#0CFFFFFF" />
