@@ -36,7 +36,7 @@ dependencies {
     // imágenes cargando/reciclándose en simultáneo.
     implementation("com.github.bumptech.glide:glide:4.16.0")
     // BottomNavigationView + ripple/elevation/estados ya resueltos para
-    // la navegación entre secciones (Películas/Series/Reels/Música) —
+    // la navegación entre secciones (Inicio/Películas/Series) —
     // reinventar esto a mano no suma nada, es el widget estándar para
     // este patrón de navegación en Android.
     implementation("com.google.android.material:material:1.12.0")

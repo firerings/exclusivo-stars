@@ -21,11 +21,12 @@ import com.exclusivostars.app.network.SeriesApi
 import com.exclusivostars.app.ui.inicio.FilaAdapter
 import com.exclusivostars.app.ui.inicio.FilaItem
 import com.exclusivostars.app.ui.pelicula.PeliculaDetalleActivity
+import com.exclusivostars.app.util.Etiqueta
 
 /**
  * Búsqueda por título sobre películas y series — mismo alcance que
- * Inicio (ver InicioFragment: Reels y Música todavía no tienen /api
- * propia). A diferencia de /buscar en la web (que cruza personas,
+ * Inicio (ver InicioFragment: Reels y Música quedaron fuera del
+ * alcance de la app). A diferencia de /buscar en la web (que cruza personas,
  * reels y canciones con varias secciones de resultados), acá se filtra
  * en el cliente sobre el catálogo que ya devuelven PeliculasApi/
  * SeriesApi — no hace falta un endpoint de búsqueda propio para esto,
@@ -106,8 +107,7 @@ class BuscarActivity : AppCompatActivity() {
                 add(FilaItem(
                     id = pelicula.nombre,
                     titulo = pelicula.titulo,
-                    subtitulo = pelicula.anio,
-                    tipo = "Película",
+                    etiqueta = Etiqueta.formatear(pelicula.pais, pelicula.anio, "Película"),
                     posterUrl = pelicula.posterUrl,
                     onClick = { startActivity(PeliculaDetalleActivity.crearIntent(this@BuscarActivity, pelicula.nombre)) },
                 ))
@@ -116,8 +116,7 @@ class BuscarActivity : AppCompatActivity() {
                 add(FilaItem(
                     id = serie.slug,
                     titulo = serie.titulo,
-                    subtitulo = serie.anio,
-                    tipo = "Serie",
+                    etiqueta = Etiqueta.formatear(serie.pais, serie.anio, "Serie"),
                     posterUrl = serie.posterUrl,
                     // Todavía no hay SerieDetalleActivity — mismo criterio
                     // que la fila de Series en InicioFragment.

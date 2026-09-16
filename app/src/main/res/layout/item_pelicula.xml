@@ -8,71 +8,77 @@
     android:paddingEnd="6dp"
     android:paddingBottom="14dp">
 
-    <!-- Título/año ADENTRO de la tarjeta, como en las filas de Inicio
-         (item_fila_poster.xml) — se ve más a app de streaming que a
-         galería de archivos. La propia web usa el patrón "debajo" acá
-         (peliculas.html), pero decidimos unificar todo al de adentro,
-         que es el que se ve más profesional. Mismo ratio 2:3 de siempre. -->
-    <androidx.cardview.widget.CardView
+    <!-- ConstraintLayout solo para forzar la relación de aspecto real
+         del poster (2:3) sobre el ancho que da GridLayoutManager — antes
+         la CardView tenía una altura fija en dp sin importar el ancho
+         real de la columna, así que centerCrop terminaba recortando el
+         poster para llenar un rectángulo que no era 2:3. Con ambas
+         dimensiones en 0dp y layout_constraintDimensionRatio, la altura
+         se calcula siempre a partir del ancho real de la columna. -->
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="200dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="4dp"
-        app:cardBackgroundColor="@color/surface">
+        android:layout_height="wrap_content">
 
-        <ImageView
-            android:id="@+id/poster"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="centerCrop"
-            android:contentDescription="@null" />
+        <androidx.cardview.widget.CardView
+            android:id="@+id/poster_card"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintDimensionRatio="2:3"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="@color/surface">
 
-        <!-- Sin badge de "pendiente" acá a propósito: la web tampoco lo
-             muestra en la grilla (peliculas.html), solo hay un aviso de
-             "reproducción directa" dentro de la ficha (pelicula.html).
-             Ver PeliculaActivity para esa versión. -->
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="80dp"
-            android:layout_gravity="bottom"
-            android:background="@drawable/poster_card_degradado" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:orientation="vertical"
-            android:padding="9dp">
-
-            <TextView
-                android:id="@+id/titulo"
+            <ImageView
+                android:id="@+id/poster"
                 android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:contentDescription="@null" />
+
+            <!-- Chip país/año/tipo integrado al poster (esquina superior
+                 derecha) — ver Etiqueta.kt para el armado del texto.
+                 Sin badge de "pendiente" acá a propósito, mismo criterio
+                 que antes: la web tampoco lo muestra en la grilla. -->
+            <TextView
+                android:id="@+id/etiqueta"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
+                android:layout_gravity="top|end"
+                android:layout_margin="6dp"
+                android:background="@drawable/badge_chip_background"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:textColor="@color/gold"
+                android:textSize="10sp"
+                android:textStyle="bold"
                 android:maxLines="1"
-                android:shadowColor="#B3000000"
-                android:shadowDx="0"
-                android:shadowDy="1"
-                android:shadowRadius="4"
-                android:textColor="@color/text_primary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:ellipsize="end" />
 
-            <TextView
-                android:id="@+id/anio"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:shadowColor="#B3000000"
-                android:shadowDx="0"
-                android:shadowDy="1"
-                android:shadowRadius="4"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+        </androidx.cardview.widget.CardView>
 
-        </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
-    </androidx.cardview.widget.CardView>
+    <!-- Título debajo del poster (ya no encima, ver conversación de
+         diseño: competía con el degradado y no se leía bien en móvil).
+         minLines=2 + maxLines=2 reserva siempre el mismo alto tenga el
+         título 1 o 2 líneas, para que las tarjetas de una misma fila
+         queden alineadas parejo. -->
+    <TextView
+        android:id="@+id/titulo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/text_primary"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:lineSpacingExtra="1dp"
+        android:minLines="2"
+        android:maxLines="2"
+        android:ellipsize="end" />
 
 </LinearLayout>

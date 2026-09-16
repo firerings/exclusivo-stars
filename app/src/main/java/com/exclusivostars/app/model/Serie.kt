@@ -19,6 +19,8 @@ data class Serie(
     val anio: String?,
     val posterUrl: String?,
     val nEpisodios: Int,
+    /** Mismo criterio que Pelicula.pais: el backend todavía no lo manda en /api/series. */
+    val pais: String? = null,
 ) {
     companion object {
         fun fromJson(json: JSONObject): Serie = Serie(
@@ -28,6 +30,7 @@ data class Serie(
             anio = json.optString("anio", null),
             posterUrl = json.optString("poster_url", null),
             nEpisodios = json.optInt("n_episodios", 0),
+            pais = json.optString("pais", null),
         )
     }
 }

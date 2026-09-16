@@ -16,16 +16,12 @@
     <string name="privacy">Al continuar aceptas nuestros términos de servicio y política de privacidad.</string>
     <string name="peliculas_title">Películas</string>
     <string name="peliculas_vacio">Todavía no hay películas indexadas.</string>
+    <string name="series_vacio">Todavía no hay series indexadas.</string>
     <string name="retry">Reintentar</string>
     <string name="logout">Cerrar sesión</string>
     <string name="nav_inicio">Inicio</string>
     <string name="nav_peliculas">Películas</string>
     <string name="nav_series">Series</string>
-    <string name="nav_reels">Reels</string>
-    <string name="nav_musica">Música</string>
-    <string name="proximamente_series">Series todavía no está lista — pronto.</string>
-    <string name="proximamente_reels">Reels todavía no está listo — pronto.</string>
-    <string name="proximamente_musica">Música todavía no está lista — pronto.</string>
 
     <!-- Ficha de película -->
     <string name="reproducir">Reproducir</string>

@@ -1,4 +1,4 @@
-package com.exclusivostars.app.ui.peliculas
+package com.exclusivostars.app.ui.series
 
 import android.view.LayoutInflater
 import android.view.View
@@ -8,16 +8,17 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.exclusivostars.app.R
-import com.exclusivostars.app.model.Pelicula
+import com.exclusivostars.app.model.Serie
 import com.exclusivostars.app.util.Etiqueta
 
-class PeliculasAdapter(
-    private val onClick: (Pelicula) -> Unit,
-) : RecyclerView.Adapter<PeliculasAdapter.VH>() {
+/** Mismo patrón exacto que PeliculasAdapter, con "Serie" fijo como tipo. */
+class SeriesAdapter(
+    private val onClick: (Serie) -> Unit,
+) : RecyclerView.Adapter<SeriesAdapter.VH>() {
 
-    private val items = mutableListOf<Pelicula>()
+    private val items = mutableListOf<Serie>()
 
-    fun submitList(nuevas: List<Pelicula>) {
+    fun submitList(nuevas: List<Serie>) {
         items.clear()
         items.addAll(nuevas)
         notifyDataSetChanged()
@@ -29,18 +30,18 @@ class PeliculasAdapter(
     }
 
     override fun onBindViewHolder(holder: VH, position: Int) {
-        val pelicula = items[position]
-        holder.titulo.text = pelicula.titulo
-        holder.etiqueta.text = Etiqueta.formatear(pelicula.pais, pelicula.anio, "Película")
+        val serie = items[position]
+        holder.titulo.text = serie.titulo
+        holder.etiqueta.text = Etiqueta.formatear(serie.pais, serie.anio, "Serie")
 
         Glide.with(holder.poster)
-            .load(pelicula.posterUrl)
+            .load(serie.posterUrl)
             .placeholder(R.drawable.poster_placeholder_background)
             .error(R.drawable.poster_placeholder_background)
             .centerCrop()
             .into(holder.poster)
 
-        holder.itemView.setOnClickListener { onClick(pelicula) }
+        holder.itemView.setOnClickListener { onClick(serie) }
     }
 
     override fun getItemCount(): Int = items.size

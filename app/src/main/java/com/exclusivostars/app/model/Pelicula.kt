@@ -26,6 +26,13 @@ data class Pelicula(
     val logoUrl: String?,
     /** "procesada" (HLS listo) o "pendiente" (se reproduce directo mientras tanto). */
     val estado: String?,
+    /**
+     * País de origen para el chip del poster (ver Etiqueta.kt). El
+     * backend todavía no manda este campo en /api/peliculas — queda
+     * null hasta que se agregue del lado del servidor (indexador.py /
+     * info.json), la app ya está lista para recibirlo.
+     */
+    val pais: String? = null,
 ) {
     companion object {
         fun fromJson(json: JSONObject): Pelicula = Pelicula(
@@ -38,6 +45,7 @@ data class Pelicula(
             fondoUrl = json.optString("fondo_url", null),
             logoUrl = json.optString("logo_url", null),
             estado = json.optString("estado", null),
+            pais = json.optString("pais", null),
         )
     }
 }

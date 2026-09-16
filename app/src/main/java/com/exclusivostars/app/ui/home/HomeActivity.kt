@@ -15,9 +15,9 @@ import com.exclusivostars.app.R
 import com.exclusivostars.app.network.SessionApi
 import com.exclusivostars.app.ui.auth.MainActivity
 import com.exclusivostars.app.ui.buscar.BuscarActivity
-import com.exclusivostars.app.ui.common.ComingSoonFragment
 import com.exclusivostars.app.ui.inicio.InicioFragment
 import com.exclusivostars.app.ui.peliculas.PeliculasFragment
+import com.exclusivostars.app.ui.series.SeriesFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 /**
@@ -52,9 +52,7 @@ class HomeActivity : AppCompatActivity() {
             val (fragment, title) = when (item.itemId) {
                 R.id.nav_inicio -> InicioFragment() to getString(R.string.nav_inicio)
                 R.id.nav_peliculas -> PeliculasFragment() to getString(R.string.nav_peliculas)
-                R.id.nav_series -> ComingSoonFragment.nuevaInstancia(getString(R.string.proximamente_series)) to getString(R.string.nav_series)
-                R.id.nav_reels -> ComingSoonFragment.nuevaInstancia(getString(R.string.proximamente_reels)) to getString(R.string.nav_reels)
-                R.id.nav_musica -> ComingSoonFragment.nuevaInstancia(getString(R.string.proximamente_musica)) to getString(R.string.nav_musica)
+                R.id.nav_series -> SeriesFragment() to getString(R.string.nav_series)
                 else -> return@setOnItemSelectedListener false
             }
             sectionTitle.text = title

@@ -17,6 +17,7 @@ import com.exclusivostars.app.model.Serie
 import com.exclusivostars.app.network.PeliculasApi
 import com.exclusivostars.app.network.SeriesApi
 import com.exclusivostars.app.ui.pelicula.PeliculaDetalleActivity
+import com.exclusivostars.app.util.Etiqueta
 
 /**
  * Portada estilo streaming, mismo espíritu que index.html en la web
@@ -24,11 +25,10 @@ import com.exclusivostars.app.ui.pelicula.PeliculaDetalleActivity
  * siempre en vez de portar el CSS/JS: ViewPager2 para el hero
  * rotativo, RecyclerViews horizontales anidados para las filas.
  *
- * A propósito solo trae Películas y Series: Reels y Música ni
- * siquiera tienen rutas /api todavía (siguen en "Próximamente" en
- * HomeActivity), así que sumarlas acá sería maquetar sin datos
- * reales. Se agregan como filas nuevas el día que tengan su API,
- * reusando FilaAdapter/FilaItem tal cual.
+ * A propósito solo trae Películas y Series: se decidió dejar Reels y
+ * Música fuera del alcance de la app Android (insostenible mantener
+ * todo eso en un cliente nativo aparte). Si algún día cambia, se
+ * agregan como filas nuevas reusando FilaAdapter/FilaItem tal cual.
  */
 class InicioFragment : Fragment(R.layout.fragment_inicio) {
 
@@ -130,8 +130,7 @@ class InicioFragment : Fragment(R.layout.fragment_inicio) {
             FilaItem(
                 id = pelicula.nombre,
                 titulo = pelicula.titulo,
-                subtitulo = pelicula.anio,
-                tipo = "Película",
+                etiqueta = Etiqueta.formatear(pelicula.pais, pelicula.anio, "Película"),
                 posterUrl = pelicula.posterUrl,
                 onClick = { startActivity(PeliculaDetalleActivity.crearIntent(requireContext(), pelicula.nombre)) },
             )
@@ -144,9 +143,10 @@ class InicioFragment : Fragment(R.layout.fragment_inicio) {
                 FilaItem(
                     id = serie.slug,
                     titulo = serie.titulo,
-                    subtitulo = serie.anio,
-                    tipo = "Serie",
+                    etiqueta = Etiqueta.formatear(serie.pais, serie.anio, "Serie"),
                     posterUrl = serie.posterUrl,
+                    // Mismo motivo que en SeriesFragment: sin ficha propia
+                    // todavía (falta el endpoint JSON de detalle).
                     onClick = {},
                 )
             })

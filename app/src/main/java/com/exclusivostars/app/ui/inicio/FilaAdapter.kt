@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.exclusivostars.app.R
 
-/** Mismo patrón que PeliculasAdapter, pero genérico vía FilaItem para que
+/** Mismo patrón que PeliculasAdapter/SeriesAdapter, pero genérico vía FilaItem para que
  *  una misma clase sirva tanto para la fila de Películas como la de Series
  *  (y cualquier fila nueva que se sume después). */
 class FilaAdapter : RecyclerView.Adapter<FilaAdapter.VH>() {
@@ -30,7 +30,13 @@ class FilaAdapter : RecyclerView.Adapter<FilaAdapter.VH>() {
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = items[position]
         holder.titulo.text = item.titulo
-        holder.anio.text = listOfNotNull(item.subtitulo, item.tipo).joinToString(" · ")
+
+        if (item.etiqueta.isNullOrEmpty()) {
+            holder.etiqueta.visibility = View.GONE
+        } else {
+            holder.etiqueta.visibility = View.VISIBLE
+            holder.etiqueta.text = item.etiqueta
+        }
 
         Glide.with(holder.poster)
             .load(item.posterUrl)
@@ -46,7 +52,7 @@ class FilaAdapter : RecyclerView.Adapter<FilaAdapter.VH>() {
 
     class VH(view: View) : RecyclerView.ViewHolder(view) {
         val poster: ImageView = view.findViewById(R.id.poster)
+        val etiqueta: TextView = view.findViewById(R.id.etiqueta)
         val titulo: TextView = view.findViewById(R.id.titulo)
-        val anio: TextView = view.findViewById(R.id.anio)
     }
 }
