@@ -14,8 +14,4 @@
     <color name="aviso_directo_border">#40D5AD5B</color>
     <color name="aviso_directo_texto">#D9C48F</color>
     <color name="overlay_scrim">#B3000000</color>
-    <!-- Fondo del chip de etiqueta (país · año · tipo) sobre el poster:
-         mismo tono que surface, con transparencia — se siente parte de
-         la paleta en vez de un overlay negro genérico. -->
-    <color name="badge_bg">#E617171B</color>
 </resources>

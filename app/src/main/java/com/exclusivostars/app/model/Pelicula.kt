@@ -27,10 +27,11 @@ data class Pelicula(
     /** "procesada" (HLS listo) o "pendiente" (se reproduce directo mientras tanto). */
     val estado: String?,
     /**
-     * País de origen para el chip del poster (ver Etiqueta.kt). El
-     * backend todavía no manda este campo en /api/peliculas — queda
-     * null hasta que se agregue del lado del servidor (indexador.py /
-     * info.json), la app ya está lista para recibirlo.
+     * País de origen en ISO 3166-1 alpha-3 ("USA", "DEU", "KOR"...)
+     * para la franja del poster (ver Etiqueta.kt). El backend todavía
+     * no manda este campo en /api/peliculas — queda null hasta que se
+     * agregue del lado del servidor (indexador.py / info.json), la
+     * app ya está lista para recibirlo.
      */
     val pais: String? = null,
 ) {

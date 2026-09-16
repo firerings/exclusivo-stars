@@ -19,7 +19,7 @@ data class Serie(
     val anio: String?,
     val posterUrl: String?,
     val nEpisodios: Int,
-    /** Mismo criterio que Pelicula.pais: el backend todavía no lo manda en /api/series. */
+    /** País en ISO 3166-1 alpha-3, mismo criterio que Pelicula.pais: el backend todavía no lo manda en /api/series. */
     val pais: String? = null,
 ) {
     companion object {

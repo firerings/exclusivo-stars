@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Chip de país/año/tipo integrado al poster (esquina superior derecha).
-     Radio chico a propósito: se lee como parte del poster, no como un
-     badge de notificación flotando encima. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/badge_bg" />
-    <corners android:radius="5dp" />
-</shape>

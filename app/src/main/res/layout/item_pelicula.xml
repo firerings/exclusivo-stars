@@ -8,66 +8,71 @@
     android:paddingEnd="6dp"
     android:paddingBottom="14dp">
 
-    <!-- ConstraintLayout solo para forzar la relación de aspecto real
-         del poster (2:3) sobre el ancho que da GridLayoutManager — antes
-         la CardView tenía una altura fija en dp sin importar el ancho
-         real de la columna, así que centerCrop terminaba recortando el
-         poster para llenar un rectángulo que no era 2:3. Con ambas
-         dimensiones en 0dp y layout_constraintDimensionRatio, la altura
-         se calcula siempre a partir del ancho real de la columna. -->
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <!-- Poster + franja de datos fusionados en UNA sola CardView: el
+         radio de borde y la sombra de la card cubren el conjunto entero,
+         así que la tarjeta "termina" visualmente en la franja en vez de
+         sentirse como dos piezas apiladas. La franja no tiene fondo
+         propio — usa el mismo cardBackgroundColor de la card, así el
+         texto queda "flotando" sobre la continuación del poster. -->
+    <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="@color/surface">
 
-        <androidx.cardview.widget.CardView
-            android:id="@+id/poster_card"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            app:layout_constraintDimensionRatio="2:3"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@color/surface">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-            <ImageView
-                android:id="@+id/poster"
+            <!-- ConstraintLayout solo para forzar la relación de aspecto
+                 real del poster (2:3) sobre el ancho real de la columna
+                 — antes la altura era fija en dp sin importar ese ancho,
+                 así que centerCrop terminaba recortando el poster. -->
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                android:contentDescription="@null" />
+                android:layout_height="wrap_content">
 
-            <!-- Chip país/año/tipo integrado al poster (esquina superior
-                 derecha) — ver Etiqueta.kt para el armado del texto.
-                 Sin badge de "pendiente" acá a propósito, mismo criterio
-                 que antes: la web tampoco lo muestra en la grilla. -->
+                <ImageView
+                    android:id="@+id/poster"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    app:layout_constraintDimensionRatio="2:3"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="@null" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <!-- País · año · tipo (ver Etiqueta.kt). maxLines=1 +
+                 ellipsize son solo un resguardo: con país en ISO
+                 alpha-3 el texto es corto siempre, así que no debería
+                 disparar en uso normal. -->
             <TextView
                 android:id="@+id/etiqueta"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="top|end"
-                android:layout_margin="6dp"
-                android:background="@drawable/badge_chip_background"
                 android:paddingStart="6dp"
                 android:paddingEnd="6dp"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:gravity="center"
                 android:textColor="@color/gold"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
-        </androidx.cardview.widget.CardView>
+        </LinearLayout>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.cardview.widget.CardView>
 
-    <!-- Título debajo del poster (ya no encima, ver conversación de
-         diseño: competía con el degradado y no se leía bien en móvil).
-         minLines=2 + maxLines=2 reserva siempre el mismo alto tenga el
-         título 1 o 2 líneas, para que las tarjetas de una misma fila
-         queden alineadas parejo. -->
+    <!-- Título debajo de la tarjeta. minLines=2 + maxLines=2 reserva
+         siempre el mismo alto tenga el título 1 o 2 líneas, para que
+         las tarjetas de una misma fila queden alineadas parejo. -->
     <TextView
         android:id="@+id/titulo"
         android:layout_width="match_parent"
