@@ -173,22 +173,6 @@
                     android:textSize="12sp"
                     android:visibility="gone" />
 
-                <!-- Aviso de reproducción directa — misma copy que
-                     .pelicula-aviso-directo en pelicula.html. -->
-                <TextView
-                    android:id="@+id/aviso_directo"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="11dp"
-                    android:background="@drawable/aviso_directo_background"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:textColor="@color/aviso_directo_texto"
-                    android:textSize="12sp"
-                    android:visibility="gone" />
-
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

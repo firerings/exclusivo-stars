@@ -59,7 +59,6 @@ class PeliculaDetalleActivity : AppCompatActivity() {
     private lateinit var meta: TextView
     private lateinit var director: TextView
     private lateinit var puntuacion: TextView
-    private lateinit var avisoDirecto: TextView
     private lateinit var sinopsis: TextView
     private lateinit var repartoTitulo: TextView
     private lateinit var recyclerReparto: RecyclerView
@@ -145,7 +144,6 @@ class PeliculaDetalleActivity : AppCompatActivity() {
         meta = findViewById(R.id.meta)
         director = findViewById(R.id.director)
         puntuacion = findViewById(R.id.puntuacion)
-        avisoDirecto = findViewById(R.id.aviso_directo)
         sinopsis = findViewById(R.id.sinopsis)
         repartoTitulo = findViewById(R.id.reparto_titulo)
         recyclerReparto = findViewById(R.id.recycler_reparto)
@@ -225,16 +223,10 @@ class PeliculaDetalleActivity : AppCompatActivity() {
             puntuacion.visibility = View.GONE
         }
 
-        if (pelicula.modoDirecto) {
-            avisoDirecto.text = if (pelicula.audioTexto != null) {
-                getString(R.string.aviso_directo_con_audio, pelicula.audioTexto)
-            } else {
-                getString(R.string.aviso_directo_sin_audio)
-            }
-            avisoDirecto.visibility = View.VISIBLE
-        } else {
-            avisoDirecto.visibility = View.GONE
-        }
+        // modoDirecto sigue viajando en el modelo y lo sigue leyendo
+        // PlayerActivity/PlayerManager para decidir cómo reproducir
+        // (HLS vs archivo directo) — lo único que se sacó de acá fue
+        // el aviso visual en pantalla, no el dato en sí.
 
         sinopsis.text = if (!pelicula.sinopsis.isNullOrBlank()) pelicula.sinopsis else getString(R.string.sin_sinopsis)
 

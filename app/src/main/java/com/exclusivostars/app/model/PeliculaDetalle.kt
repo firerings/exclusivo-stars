@@ -93,8 +93,6 @@ data class PeliculaDetalle(
     val tarjetaUrl: String?,
     val posterUrl: String?,
     val reparto: List<Actor>,
-    /** Descripción de la pista de audio embebida, solo relevante en modo directo (ver aviso). */
-    val audioTexto: String?,
     val modoDirecto: Boolean,
     val sourceUrl: String,
     val subtitulos: List<Subtitulo>,
@@ -128,7 +126,6 @@ data class PeliculaDetalle(
                 tarjetaUrl = json.optString("tarjeta_url", null),
                 posterUrl = json.optString("poster_url", null),
                 reparto = reparto,
-                audioTexto = json.optString("audio_texto", null),
                 modoDirecto = json.optBoolean("modo_directo", false),
                 sourceUrl = json.getString("source_url"),
                 subtitulos = subtitulos,
